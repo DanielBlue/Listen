@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="text_size_large">25sp</dimen>
+    <dimen name="text_size_label">20sp</dimen>
+    <dimen name="text_size_medium">18sp</dimen>
+    <dimen name="text_size_des">17sp</dimen>
+    <dimen name="text_size_small">15sp</dimen>
+
+
+    <dimen name="bottom_bar_height">50dp</dimen>
+    <dimen name="base_margin">10dp</dimen>
+    <dimen name="margin_small">5dp</dimen>
+
+
+    <dimen name="divider_line">1dp</dimen>
+    <dimen name="fab_margin">16dp</dimen>
+    <dimen name="content_top_size">150dp</dimen>
+    <dimen name="margin_big">20dp</dimen>
+
+</resources>
