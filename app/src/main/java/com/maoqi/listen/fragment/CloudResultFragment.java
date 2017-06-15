@@ -32,7 +32,7 @@ public class CloudResultFragment extends Fragment{
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_result_list,null);
         rv_list = (RecyclerView) view.findViewById(R.id.rv_list);
-        adapter = new CloudResultListAdapter(data);
+        adapter = new CloudResultListAdapter(getActivity(),data);
         rv_list.setLayoutManager(new LinearLayoutManager(getActivity()));
         rv_list.addItemDecoration(new SpacesItemDecoration(0,0,0, DensityUtils.dp2px(getActivity(),1)));
         rv_list.setAdapter(adapter);
