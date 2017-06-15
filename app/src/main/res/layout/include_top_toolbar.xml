@@ -10,5 +10,13 @@
     app:layout_scrollFlags="scroll|enterAlways"
     app:popupTheme="@style/ToolbarPopupTheme"
     >
-
+    <EditText
+        android:id="@+id/et_search"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:imeOptions="actionSearch"
+        android:singleLine="true"
+        android:maxLines="1"
+        android:layout_marginEnd="@dimen/base_margin"
+        />
 </android.support.v7.widget.Toolbar>

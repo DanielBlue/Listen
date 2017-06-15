@@ -4,13 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.maoqi.listen.MainActivity">
+    tools:context="com.maoqi.listen.activity.MainActivity">
 
-    <fragment
-        android:id="@+id/fragment_search"
-        android:name="com.maoqi.listen.SearchFragment"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+    <include layout="@layout/fragment_search" />
 
     <android.support.v7.widget.CardView
         android:layout_width="match_parent"
@@ -18,5 +14,6 @@
         android:layout_alignParentBottom="true"
         app:cardElevation="8dp">
 
+        <include layout="@layout/fragment_bottom_controller" />
     </android.support.v7.widget.CardView>
 </RelativeLayout>
