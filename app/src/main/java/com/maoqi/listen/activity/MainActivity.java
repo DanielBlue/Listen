@@ -115,8 +115,8 @@ public class MainActivity extends BaseToolbarActivity {
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if (keyCode == event.KEYCODE_ENTER) {
                     KeyBoardUtils.closeKeybord(et_search,MainActivity.this);
-                    preInput = et_search.getText().toString();
-                    requestServer(preInput);
+                    preInput="";
+                    requestServer(et_search.getText().toString());
                 }
                 return false;
             }
