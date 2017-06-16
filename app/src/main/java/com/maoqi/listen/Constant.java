@@ -14,4 +14,6 @@ public class Constant {
     public static final int BEHAVIOR_STOP = 102;
     public static final int BEHAVIOR_CONTINUE = 103;
 
+    public static final int ON_PLAY = 10086;
+    public static final int ON_PAUSE = 10010;
 }

@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
-import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
@@ -14,11 +13,12 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.maoqi.listen.Constant;
 import com.maoqi.listen.R;
 import com.maoqi.listen.adapter.SearchListAdapter;
 import com.maoqi.listen.base.BaseToolbarActivity;
@@ -28,6 +28,7 @@ import com.maoqi.listen.bean.XiamiSongBean;
 import com.maoqi.listen.fragment.CloudResultFragment;
 import com.maoqi.listen.fragment.QQResultFragment;
 import com.maoqi.listen.fragment.XiamiResultFragment;
+import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.service.PlayMusicService;
 import com.maoqi.listen.util.KeyBoardUtils;
 import com.maoqi.listen.util.TUtils;
@@ -42,14 +43,12 @@ import java.util.List;
 
 import okhttp3.Call;
 
-public class MainActivity extends BaseToolbarActivity {
+public class MainActivity extends BaseToolbarActivity implements PlayControllerCallback, View.OnClickListener {
 
-    RecyclerView rvList;
     Toolbar tbToolbar;
     ImageView ivAlbumArt;
     TextView tvTitle;
     TextView tvArtist;
-    LinearLayout llContent;
     ImageButton ibPlayPause;
     ImageButton ibList;
     EditText et_search;
@@ -64,6 +63,8 @@ public class MainActivity extends BaseToolbarActivity {
     private TabLayout tb_tab;
     private ViewPager vp_pager;
     private ProgressDialog progress;
+    private int playState = Constant.ON_PAUSE;
+    private ImageView iv_clear;
 
 
     @Override
@@ -71,6 +72,17 @@ public class MainActivity extends BaseToolbarActivity {
         setContentView(R.layout.activity_main);
         progress = createProgressDialog(R.string.loading);
         initData();
+        ivAlbumArt = (ImageView) findViewById(R.id.iv_album_art);
+        tvTitle = (TextView) findViewById(R.id.tv_title);
+        tvArtist = (TextView) findViewById(R.id.tv_artist);
+        iv_clear = (ImageView) findViewById(R.id.iv_clear);
+        ibPlayPause = (ImageButton) findViewById(R.id.ib_play_pause);
+        ibList = (ImageButton) findViewById(R.id.ib_list);
+        iv_clear.setOnClickListener(this);
+        ibPlayPause.setOnClickListener(this);
+        ibList.setOnClickListener(this);
+
+
         tbToolbar = (Toolbar) findViewById(R.id.tb_toolbar);
         initToolbar(tbToolbar);
         tb_tab = (TabLayout) findViewById(R.id.tl_tab);
@@ -110,6 +122,17 @@ public class MainActivity extends BaseToolbarActivity {
         tb_tab.setupWithViewPager(vp_pager);
 
         et_search = (EditText) findViewById(R.id.et_search);
+        et_search.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus){
+                    iv_clear.setVisibility(View.VISIBLE);
+                }else {
+                    iv_clear.setVisibility(View.GONE);
+                }
+            }
+        });
+
         et_search.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -120,6 +143,9 @@ public class MainActivity extends BaseToolbarActivity {
                 return false;
             }
         });
+
+
+        initPlayState();
     }
 
     private void requestServer(final String result) {
@@ -249,13 +275,68 @@ public class MainActivity extends BaseToolbarActivity {
         fragmentList.add(cloudResultFragment);
         fragmentList.add(xiamiResultFragment);
         fragmentList.add(qqResultFragment);
-
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         stopService(new Intent(this, PlayMusicService.class));
+    }
+
+    @Override
+    public void updateSongInfo(String imgUrl, String songName, String artist) {
+        Glide.with(this).load(imgUrl).into(ivAlbumArt);
+        tvTitle.setText(songName);
+        tvArtist.setText(artist);
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.ib_list:
+                TUtils.showShort("列表功能还在开发中，莫点了");
+                break;
+            case R.id.ib_play_pause:
+                updatePlayState();
+                break;
+            case R.id.iv_clear:
+                et_search.setText("");
+                break;
+        }
+    }
+
+    public void updatePlayState() {
+        Intent intent = new Intent(this,PlayMusicService.class);
+        switch (playState){
+            case Constant.ON_PLAY:
+                ibPlayPause.setImageResource(R.drawable.ic_play_arrow_black_36dp);
+                intent.putExtra(Constant.BEHAVIOR,Constant.BEHAVIOR_PAUSE);
+                startService(intent);
+                playState = Constant.ON_PAUSE;
+                break;
+            case Constant.ON_PAUSE:
+                ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
+                intent.putExtra(Constant.BEHAVIOR,Constant.BEHAVIOR_CONTINUE);
+                startService(intent);
+                playState = Constant.ON_PLAY;
+                break;
+        }
+    }
+
+    private void initPlayState() {
+        switch (playState){
+            case Constant.ON_PLAY:
+                ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
+                break;
+            case Constant.ON_PAUSE:
+                ibPlayPause.setImageResource(R.drawable.ic_play_arrow_black_36dp);
+                break;
+        }
+    }
+
+    public void setPlayState(int playState){
+        this.playState = playState;
+        initPlayState();
     }
 
     //    @Override

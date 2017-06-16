@@ -9,6 +9,8 @@ import android.os.IBinder;
 import android.support.annotation.Nullable;
 
 import com.maoqi.listen.Constant;
+import com.maoqi.listen.R;
+import com.maoqi.listen.util.TUtils;
 
 import java.io.IOException;
 
@@ -19,6 +21,8 @@ import java.io.IOException;
 public class PlayMusicService extends Service implements MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnInfoListener, AudioManager.OnAudioFocusChangeListener {
 
     private MediaPlayer player;
+    private String url;
+    private AudioManager audioManager;
 
     @Nullable
     @Override
@@ -35,8 +39,8 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         player.setOnPreparedListener(this);
         player.setOnInfoListener(this);
 
-        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        int result = audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
     }
 
     @Override
@@ -45,8 +49,8 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
 
         switch (behavior) {
             case Constant.BEHAVIOR_PLAY:
-                String url = intent.getExtras().getString("url");
-                play(url);
+                url = intent.getExtras().getString("url");
+                play();
                 break;
             case Constant.BEHAVIOR_PAUSE:
                 pause();
@@ -64,9 +68,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
 
     @Override
     public void onDestroy() {
-        if (player != null) {
-            player.release();
-        }
+        stop();
         super.onDestroy();
     }
 
@@ -74,10 +76,11 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         if (player != null && player.isPlaying()) {
             player.pause();
         }
+        audioManager.abandonAudioFocus(this);
     }
 
-    public void play(String url) {
-        if (player != null && !player.isPlaying()) {
+    public void play() {
+        if (player != null) {
             try {
                 player.reset();
                 player.setDataSource(url);
@@ -98,16 +101,19 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     public void stop() {
         if (player != null && player.isPlaying()) {
             player.stop();
+            player.release();
         }
+        audioManager.abandonAudioFocus(this);
     }
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-
+        play();
     }
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
+        TUtils.showShort(R.string.source_error);
         return false;
     }
 

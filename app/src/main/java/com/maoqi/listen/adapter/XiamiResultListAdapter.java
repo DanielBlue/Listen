@@ -13,7 +13,9 @@ import android.widget.TextView;
 import com.maoqi.listen.Constant;
 import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
+import com.maoqi.listen.activity.MainActivity;
 import com.maoqi.listen.bean.XiamiSongBean;
+import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.service.PlayMusicService;
 
 import java.util.List;
@@ -25,10 +27,12 @@ import java.util.List;
 public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultListAdapter.ViewHolder> {
     private List<XiamiSongBean> data;
     private Activity activity;
+    private static PlayControllerCallback callback;
 
-    public XiamiResultListAdapter(List<XiamiSongBean> data,Activity activity) {
+    public XiamiResultListAdapter(List<XiamiSongBean> data,Activity activity,PlayControllerCallback callback) {
         this.data = data;
         this.activity = activity;
+        this.callback = callback;
     }
 
     @Override
@@ -72,6 +76,10 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
             ll_content.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    ((MainActivity)activity).setPlayState(Constant.ON_PLAY);
+                    XiamiSongBean xiamiSongBean = data.get(position);
+                    callback.updateSongInfo(xiamiSongBean.getAlbum_logo(),xiamiSongBean.getSong_name(),xiamiSongBean.getArtist_name());
+
                     Intent intent = new Intent(activity, PlayMusicService.class);
                     intent.putExtra("url",data.get(position).getListen_file());
                     intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
