@@ -1,5 +1,7 @@
 package com.maoqi.listen.adapter;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,9 +10,11 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.maoqi.listen.Constant;
 import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
 import com.maoqi.listen.bean.XiamiSongBean;
+import com.maoqi.listen.service.PlayMusicService;
 
 import java.util.List;
 
@@ -20,16 +24,23 @@ import java.util.List;
 
 public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultListAdapter.ViewHolder> {
     private List<XiamiSongBean> data;
+    private Activity activity;
 
-    public XiamiResultListAdapter(List<XiamiSongBean> data) {
+    public XiamiResultListAdapter(List<XiamiSongBean> data,Activity activity) {
         this.data = data;
+        this.activity = activity;
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(ListenApplication.appContext).inflate(R.layout.item_result_list,parent,false);
-        ViewHolder holder = new ViewHolder(view);
+        ViewHolder holder = new ViewHolder(view,data,viewType,activity);
         return holder;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return position;
     }
 
     @Override
@@ -51,12 +62,22 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
         LinearLayout ll_content;
         ImageView iv_more;
 
-        public ViewHolder(View itemView) {
+        public ViewHolder(View itemView, final List<XiamiSongBean> data, final int position, final Activity activity) {
             super(itemView);
             tv_title = (TextView) itemView.findViewById(R.id.tv_title);
             tv_artist = (TextView) itemView.findViewById(R.id.tv_artist);
             ll_content = (LinearLayout) itemView.findViewById(R.id.ll_content);
             iv_more = (ImageView) itemView.findViewById(R.id.iv_more);
+
+            ll_content.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(activity, PlayMusicService.class);
+                    intent.putExtra("url",data.get(position).getListen_file());
+                    intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
+                    activity.startService(intent);
+                }
+            });
         }
     }
 }

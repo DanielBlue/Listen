@@ -25,15 +25,15 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
     private List<CloudSongBean> data;
     private Activity activity;
 
-    public CloudResultListAdapter(Activity activity,List<CloudSongBean> data) {
+    public CloudResultListAdapter(Activity activity, List<CloudSongBean> data) {
         this.data = data;
         this.activity = activity;
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(ListenApplication.appContext).inflate(R.layout.item_result_list,parent,false);
-        ViewHolder holder = new ViewHolder(view,data,viewType,activity);
+        View view = LayoutInflater.from(ListenApplication.appContext).inflate(R.layout.item_result_list, parent, false);
+        ViewHolder holder = new ViewHolder(view, data, viewType, activity);
         return holder;
     }
 
@@ -48,7 +48,7 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
 //        spannableString.setSpan(new ForegroundColorSpan(ListenApplication.appContext.getResources().getColor(R.color.search_blue)), 0,data.get(position).getAlbum().getArtists().get(0).getName().length(), Spanned.SPAN_INCLUSIVE_INCLUSIVE );
         holder.tv_title.setText(data.get(position).getName());
         holder.tv_artist.setText(data.get(position).getAlbum().getArtists().get(0).getName()
-                +" - "+data.get(position).getAlbum().getName());
+                + " - " + data.get(position).getAlbum().getName());
     }
 
     @Override
@@ -56,7 +56,7 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
         return data.size();
     }
 
-    static class ViewHolder extends RecyclerView.ViewHolder{
+    static class ViewHolder extends RecyclerView.ViewHolder {
 
         TextView tv_title;
         TextView tv_artist;
@@ -72,11 +72,13 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
             ll_content.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+
                     Intent intent = new Intent(activity, PlayMusicService.class);
-                    intent.putExtra("url",data.get(position).)
+
                 }
             });
         }
     }
+    
 }
 

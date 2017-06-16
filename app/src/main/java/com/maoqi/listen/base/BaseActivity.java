@@ -70,24 +70,20 @@ public abstract class BaseActivity extends AppCompatActivity {
         return builder;
     }
 
-    protected ProgressDialog createLoadingDialog(){
+    protected ProgressDialog createProgressDialog(){
         loadingDialog = new ProgressDialog(this);
         loadingDialog.setCanceledOnTouchOutside(false);
         return loadingDialog;
     }
 
     protected ProgressDialog createProgressDialog(String message){
-        createLoadingDialog().setMessage(message);
+        createProgressDialog().setMessage(message);
         return loadingDialog;
     }
 
     protected ProgressDialog createProgressDialog(@StringRes int message){
-        createLoadingDialog().setMessage(getResources().getString(message));
+        createProgressDialog().setMessage(getResources().getString(message));
         return loadingDialog;
-    }
-
-    protected void progressLoading(){
-        createLoadingDialog().show();
     }
 
     protected void progressDismiss(){

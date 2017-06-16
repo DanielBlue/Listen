@@ -1,6 +1,7 @@
 package com.maoqi.listen.activity;
 
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
@@ -27,6 +28,7 @@ import com.maoqi.listen.bean.XiamiSongBean;
 import com.maoqi.listen.fragment.CloudResultFragment;
 import com.maoqi.listen.fragment.QQResultFragment;
 import com.maoqi.listen.fragment.XiamiResultFragment;
+import com.maoqi.listen.service.PlayMusicService;
 import com.maoqi.listen.util.KeyBoardUtils;
 import com.maoqi.listen.util.TUtils;
 import com.zhy.http.okhttp.OkHttpUtils;
@@ -61,14 +63,13 @@ public class MainActivity extends BaseToolbarActivity {
     private QQResultFragment qqResultFragment;
     private TabLayout tb_tab;
     private ViewPager vp_pager;
-    private String preInput = "";
     private ProgressDialog progress;
 
 
     @Override
     protected void initView() {
         setContentView(R.layout.activity_main);
-        progress = createLoadingDialog();
+        progress = createProgressDialog(R.string.loading);
         initData();
         tbToolbar = (Toolbar) findViewById(R.id.tb_toolbar);
         initToolbar(tbToolbar);
@@ -85,19 +86,18 @@ public class MainActivity extends BaseToolbarActivity {
             @Override
             public void onPageSelected(int position) {
                 String input = et_search.getText().toString();
+                switch (position) {
+                    case 0:
+                        flag = CLOUD_MUSIC;
+                        break;
+                    case 1:
+                        flag = XIAMI_MUSIC;
+                        break;
+                    case 2:
+                        flag = QQ_MUSIC;
+                        break;
+                }
                 if (!TextUtils.isEmpty(input)) {
-                    switch (position) {
-                        case 0:
-                            flag = CLOUD_MUSIC;
-                            break;
-                        case 1:
-                            flag = XIAMI_MUSIC;
-                            break;
-                        case 2:
-                            flag = QQ_MUSIC;
-                            break;
-                    }
-                    preInput = input;
                     requestServer(input);
                 }
             }
@@ -114,8 +114,7 @@ public class MainActivity extends BaseToolbarActivity {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if (keyCode == event.KEYCODE_ENTER) {
-                    KeyBoardUtils.closeKeybord(et_search,MainActivity.this);
-                    preInput="";
+                    KeyBoardUtils.closeKeybord(et_search, MainActivity.this);
                     requestServer(et_search.getText().toString());
                 }
                 return false;
@@ -124,7 +123,7 @@ public class MainActivity extends BaseToolbarActivity {
     }
 
     private void requestServer(final String result) {
-        if (!progress.isShowing()){
+        if (!progress.isShowing()) {
             progress.show();
         }
 
@@ -157,7 +156,7 @@ public class MainActivity extends BaseToolbarActivity {
                                     gson.fromJson(jsonObject.getJSONObject("result").getString("songs"), type);
                             cloudResultFragment.refreshList(data);
 
-                            if (progress.isShowing()){
+                            if (progress.isShowing()) {
                                 progress.dismiss();
                             }
                         } catch (JSONException e) {
@@ -193,7 +192,7 @@ public class MainActivity extends BaseToolbarActivity {
 
                                     xiamiResultFragment.refreshList(data);
 
-                                    if (progress.isShowing()){
+                                    if (progress.isShowing()) {
                                         progress.dismiss();
                                     }
                                 } catch (JSONException e) {
@@ -228,7 +227,7 @@ public class MainActivity extends BaseToolbarActivity {
 
                                     qqResultFragment.refreshList(data);
 
-                                    if (progress.isShowing()){
+                                    if (progress.isShowing()) {
                                         progress.dismiss();
                                     }
                                 } catch (JSONException e) {
@@ -253,7 +252,13 @@ public class MainActivity extends BaseToolbarActivity {
 
     }
 
-//    @Override
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopService(new Intent(this, PlayMusicService.class));
+    }
+
+    //    @Override
 //    public boolean onCreateOptionsMenu(Menu menu) {
 //        getMenuInflater().inflate(R.menu.menu_search, menu);
 //        SearchManager searchManager =
