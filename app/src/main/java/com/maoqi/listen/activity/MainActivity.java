@@ -2,39 +2,60 @@ package com.maoqi.listen.activity;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.graphics.drawable.ColorDrawable;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.maoqi.listen.Constant;
+import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
+import com.maoqi.listen.adapter.PopupPlayListAdapter;
 import com.maoqi.listen.adapter.SearchListAdapter;
+import com.maoqi.listen.adapter.SpacesItemDecoration;
 import com.maoqi.listen.base.BaseToolbarActivity;
-import com.maoqi.listen.bean.CloudSongBean;
-import com.maoqi.listen.bean.QQSongBean;
-import com.maoqi.listen.bean.XiamiSongBean;
 import com.maoqi.listen.fragment.CloudResultFragment;
 import com.maoqi.listen.fragment.QQResultFragment;
 import com.maoqi.listen.fragment.XiamiResultFragment;
+import com.maoqi.listen.model.DBManager;
 import com.maoqi.listen.model.PlayControllerCallback;
+import com.maoqi.listen.model.SpHelper;
+import com.maoqi.listen.model.bean.BaseSongBean;
+import com.maoqi.listen.model.bean.CloudSongBean;
+import com.maoqi.listen.model.bean.QQSongBean;
+import com.maoqi.listen.model.bean.XiamiSongBean;
+import com.maoqi.listen.model.event.PlayListEvent;
+import com.maoqi.listen.model.event.PlayNextEvent;
+import com.maoqi.listen.model.event.PlayStateEvent;
 import com.maoqi.listen.service.PlayMusicService;
+import com.maoqi.listen.util.DensityUtils;
 import com.maoqi.listen.util.KeyBoardUtils;
 import com.maoqi.listen.util.TUtils;
 import com.zhy.http.okhttp.OkHttpUtils;
 import com.zhy.http.okhttp.callback.StringCallback;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -56,6 +77,8 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
     private final int CLOUD_MUSIC = 10000;
     private final int XIAMI_MUSIC = 10010;
     private final int QQ_MUSIC = 10086;
+    private int playState = Constant.ON_STOP;
+    private int loopType = Constant.LIST_LOOP;
     private List<Fragment> fragmentList;
     private CloudResultFragment cloudResultFragment;
     private XiamiResultFragment xiamiResultFragment;
@@ -63,8 +86,16 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
     private TabLayout tb_tab;
     private ViewPager vp_pager;
     private ProgressDialog progress;
-    private int playState = Constant.ON_PAUSE;
     private ImageView iv_clear;
+    private List<BaseSongBean> playList;
+    private LinearLayout ll_content_parent;
+    private View popupView;
+    private PopupWindow popupWindow;
+    private TextView tv_loop_text;
+    private TextView tv_collect;
+    private TextView tv_clear;
+    private RecyclerView rv_list;
+    int currentPlayPositon = -1;
 
 
     @Override
@@ -72,6 +103,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
         setContentView(R.layout.activity_main);
         progress = createProgressDialog(R.string.loading);
         initData();
+        ll_content_parent = (LinearLayout) findViewById(R.id.ll_content_parent);
         ivAlbumArt = (ImageView) findViewById(R.id.iv_album_art);
         tvTitle = (TextView) findViewById(R.id.tv_title);
         tvArtist = (TextView) findViewById(R.id.tv_artist);
@@ -125,9 +157,9 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
         et_search.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus){
+                if (hasFocus) {
                     iv_clear.setVisibility(View.VISIBLE);
-                }else {
+                } else {
                     iv_clear.setVisibility(View.GONE);
                 }
             }
@@ -146,6 +178,28 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
 
 
         initPlayState();
+        ListenApplication.fixedThreadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                playList = DBManager.getInstance(MainActivity.this).getSongList();
+                if (playList != null && playList.size() > 0) {
+                    BaseSongBean bean = playList.get(playList.size() - 1);
+                    updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongUrl());
+                }
+            }
+        });
+    }
+
+    public void addSong2List(BaseSongBean bean) {
+        for (int i = 0; i < playList.size(); i++) {
+            if (playList.get(i).getSongId().equals(bean.getSongId())) {
+                playList.remove(i);
+                break;
+            }
+        }
+        playList.add(bean);
+        DBManager.getInstance(this).insertSong(bean);
+        updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongArtist());
     }
 
     private void requestServer(final String result) {
@@ -236,7 +290,6 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
                             @Override
                             public void onError(Call call, Exception e, int id) {
                                 TUtils.showShort(R.string.net_error + "..." + e.getMessage());
-
                             }
 
                             @Override
@@ -268,6 +321,9 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
 
     @Override
     protected void initData() {
+        currentPlayPositon = SpHelper.getInt(this, Constant.CURRENT_PLAY_POSITON, 0);
+        loopType = SpHelper.getInt(this, Constant.LOOP_TYPE, Constant.LIST_LOOP);
+
         fragmentList = new ArrayList<>();
         cloudResultFragment = new CloudResultFragment();
         xiamiResultFragment = new XiamiResultFragment();
@@ -278,9 +334,63 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        EventBus.getDefault().unregister(this);
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopService(new Intent(this, PlayMusicService.class));
+        SpHelper.putInt(this, Constant.CURRENT_PLAY_POSITON, currentPlayPositon);
+        SpHelper.putInt(this, Constant.LOOP_TYPE, loopType);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onMessageEvent(PlayStateEvent event) {
+        setPlayState(event.getPlayState());
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void changePlayList(PlayListEvent event) {
+        switch (event.getTag()) {
+            case Constant.ADD:
+                startPlay(event.getBean().getSongUrl());
+                addSong2List(event.getBean());
+                break;
+            case Constant.DELETE:
+                playList.remove(event.getPosition());
+                DBManager.getInstance(this).deleteSong(event.getBean());
+                break;
+        }
+    }
+
+    private void startPlay(String url) {
+        Intent intent = new Intent(this, PlayMusicService.class);
+        intent.putExtra("url", url);
+        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
+        startService(intent);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void playNext(PlayNextEvent event) {
+        switch (loopType) {
+            case Constant.LIST_LOOP:
+                currentPlayPositon += 1;
+                break;
+            case Constant.SINGLE_LOOP:
+                break;
+            case Constant.RANDOM_PLAY:
+                currentPlayPositon = (int) (Math.random() * playList.size());
+                break;
+        }
+        startPlay(playList.get(currentPlayPositon).getSongUrl());
     }
 
     @Override
@@ -292,9 +402,13 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
 
     @Override
     public void onClick(View v) {
-        switch (v.getId()){
+        switch (v.getId()) {
             case R.id.ib_list:
-                TUtils.showShort("列表功能还在开发中，莫点了");
+                popupView = LayoutInflater.from(this).inflate(R.layout.popup_play_list, null);
+                popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, DensityUtils.dp2px(this, 400));
+                initPopupWindow();
+                showPlayList();
+                popupWindow.showAtLocation(ll_content_parent, Gravity.BOTTOM, 0, 0);
                 break;
             case R.id.ib_play_pause:
                 updatePlayState();
@@ -305,36 +419,130 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
         }
     }
 
+    private void showPlayList() {
+        tv_loop_text = (TextView) popupView.findViewById(R.id.tv_loop_text);
+        tv_collect = (TextView) popupView.findViewById(R.id.tv_collect);
+        tv_clear = (TextView) popupView.findViewById(R.id.tv_clear);
+        rv_list = (RecyclerView) popupView.findViewById(R.id.rv_list);
+
+        rv_list.setLayoutManager(new LinearLayoutManager(this));
+        rv_list.addItemDecoration(new SpacesItemDecoration(DensityUtils.dp2px(this, 1), 0));
+        rv_list.setAdapter(new PopupPlayListAdapter());
+
+        updateLoopInfo();
+
+        tv_loop_text.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                switch (loopType) {
+                    case Constant.LIST_LOOP:
+                        loopType = Constant.SINGLE_LOOP;
+                        break;
+                    case Constant.SINGLE_LOOP:
+                        loopType = Constant.RANDOM_PLAY;
+                        break;
+                    case Constant.RANDOM_PLAY:
+                        loopType = Constant.LIST_LOOP;
+                        break;
+                }
+                updateLoopInfo();
+            }
+        });
+
+        tv_clear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                playList.clear();
+                ListenApplication.fixedThreadPool.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        DBManager.getInstance(MainActivity.this).deleteSong(playList);
+                    }
+                });
+            }
+        });
+
+        tv_collect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                for (BaseSongBean bean : playList) {
+                    bean.setCollect(true);
+                }
+                ListenApplication.fixedThreadPool.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        DBManager.getInstance(MainActivity.this).insertSong(playList);
+                    }
+                });
+            }
+        });
+
+    }
+
+    private void updateLoopInfo() {
+        switch (loopType) {
+            case Constant.LIST_LOOP:
+                tv_loop_text.setText(R.string.list_loop);
+                break;
+            case Constant.SINGLE_LOOP:
+                tv_loop_text.setText(R.string.single_loop);
+                break;
+            case Constant.RANDOM_PLAY:
+                tv_loop_text.setText(R.string.random_play);
+                break;
+        }
+    }
+
+    private void initPopupWindow() {
+        popupWindow.setContentView(popupView);
+        popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
+        popupWindow.setOutsideTouchable(true);
+        popupWindow.setClippingEnabled(false);
+        popupWindow.setAnimationStyle(R.style.AnimUpDown);
+    }
+
     public void updatePlayState() {
-        Intent intent = new Intent(this,PlayMusicService.class);
-        switch (playState){
+        Intent intent = new Intent(this, PlayMusicService.class);
+        switch (playState) {
             case Constant.ON_PLAY:
                 ibPlayPause.setImageResource(R.drawable.ic_play_arrow_black_36dp);
-                intent.putExtra(Constant.BEHAVIOR,Constant.BEHAVIOR_PAUSE);
+                intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PAUSE);
                 startService(intent);
                 playState = Constant.ON_PAUSE;
                 break;
             case Constant.ON_PAUSE:
                 ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
-                intent.putExtra(Constant.BEHAVIOR,Constant.BEHAVIOR_CONTINUE);
+                intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_CONTINUE);
                 startService(intent);
                 playState = Constant.ON_PLAY;
+                break;
+            case Constant.ON_STOP:
+                if (playList != null && playList.size() > 0) {
+                    ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
+                    intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
+                    intent.putExtra("url", playList.get(currentPlayPositon).getSongUrl());
+                    startService(intent);
+                    playState = Constant.ON_PLAY;
+                } else {
+                    TUtils.showShort(R.string.empty_list);
+                }
                 break;
         }
     }
 
     private void initPlayState() {
-        switch (playState){
+        switch (playState) {
             case Constant.ON_PLAY:
                 ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
                 break;
             case Constant.ON_PAUSE:
+            case Constant.ON_STOP:
                 ibPlayPause.setImageResource(R.drawable.ic_play_arrow_black_36dp);
                 break;
         }
     }
 
-    public void setPlayState(int playState){
+    public void setPlayState(int playState) {
         this.playState = playState;
         initPlayState();
     }

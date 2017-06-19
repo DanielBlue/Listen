@@ -12,7 +12,7 @@ import android.view.ViewGroup;
 import com.maoqi.listen.R;
 import com.maoqi.listen.adapter.SpacesItemDecoration;
 import com.maoqi.listen.adapter.XiamiResultListAdapter;
-import com.maoqi.listen.bean.XiamiSongBean;
+import com.maoqi.listen.model.bean.XiamiSongBean;
 import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.util.DensityUtils;
 

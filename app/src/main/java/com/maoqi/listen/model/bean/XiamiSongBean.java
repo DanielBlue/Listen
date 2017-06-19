@@ -1,4 +1,4 @@
-package com.maoqi.listen.bean;
+package com.maoqi.listen.model.bean;
 
 import java.util.List;
 

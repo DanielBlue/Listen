@@ -12,7 +12,7 @@ import android.view.ViewGroup;
 import com.maoqi.listen.R;
 import com.maoqi.listen.adapter.QQResultListAdapter;
 import com.maoqi.listen.adapter.SpacesItemDecoration;
-import com.maoqi.listen.bean.QQSongBean;
+import com.maoqi.listen.model.bean.QQSongBean;
 import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.util.DensityUtils;
 

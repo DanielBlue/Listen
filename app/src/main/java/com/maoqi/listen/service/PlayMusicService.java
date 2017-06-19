@@ -10,7 +10,11 @@ import android.support.annotation.Nullable;
 
 import com.maoqi.listen.Constant;
 import com.maoqi.listen.R;
+import com.maoqi.listen.model.event.PlayNextEvent;
+import com.maoqi.listen.model.event.PlayStateEvent;
 import com.maoqi.listen.util.TUtils;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.io.IOException;
 
@@ -108,12 +112,13 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-        play();
+        EventBus.getDefault().post(new PlayNextEvent());
     }
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         TUtils.showShort(R.string.source_error);
+        EventBus.getDefault().post(new PlayStateEvent(Constant.ON_STOP));
         return false;
     }
 

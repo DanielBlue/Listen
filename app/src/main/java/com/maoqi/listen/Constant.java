@@ -16,4 +16,32 @@ public class Constant {
 
     public static final int ON_PLAY = 10086;
     public static final int ON_PAUSE = 10010;
+    public static final int ON_STOP = 10000;
+
+    public static final String TABLE_PLAY_LIST = "play_list";
+    public static final String SONG_URL = "song_url";
+    public static final String SONG_TITLE = "song_title";
+    public static final String SONG_ARTIST = "song_artist";
+    public static final String SONG_ALBUM = "song_album";
+    public static final String SONG_IMG_URL = "song_img_url";
+    public static final String SONG_ID = "song_id";
+    public static final String RESERVED_1 = "reserved_1";
+    public static final String RESERVED_2 = "reserved_2";
+    public static final String RESERVED_3 = "reserved_3";
+    public static final String RESERVED_4 = "reserved_4";
+    public static final String RESERVED_5 = "reserved_5";
+    public static final String RESERVED_6 = "reserved_6";
+    public static final String LYRIC_URL = "lyric_url";
+    public static final String IS_COLLECT = "is_collect";
+
+    public static final int LIST_LOOP = 100;
+    public static final int SINGLE_LOOP = 101;
+    public static final int RANDOM_PLAY = 102;
+
+
+    public static final int ADD = 100;
+    public static final int DELETE = 101;
+
+    public static final String CURRENT_PLAY_POSITON = "current_play_positon";
+    public static final String LOOP_TYPE = "loop_type";
 }
