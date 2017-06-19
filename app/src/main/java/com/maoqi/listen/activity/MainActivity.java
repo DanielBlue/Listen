@@ -181,7 +181,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
         ListenApplication.fixedThreadPool.execute(new Runnable() {
             @Override
             public void run() {
-                playList = DBManager.getInstance(MainActivity.this).getSongList();
+                playList = DBManager.getInstance().getSongList();
                 if (playList != null && playList.size() > 0) {
                     BaseSongBean bean = playList.get(playList.size() - 1);
                     updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongUrl());
@@ -198,7 +198,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
             }
         }
         playList.add(bean);
-        DBManager.getInstance(this).insertSong(bean);
+        DBManager.getInstance().insertSong(bean);
         updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongArtist());
     }
 
@@ -366,7 +366,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
                 break;
             case Constant.DELETE:
                 playList.remove(event.getPosition());
-                DBManager.getInstance(this).deleteSong(event.getBean());
+                DBManager.getInstance().deleteSong(event.getBean());
                 break;
         }
     }
@@ -427,7 +427,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
 
         rv_list.setLayoutManager(new LinearLayoutManager(this));
         rv_list.addItemDecoration(new SpacesItemDecoration(DensityUtils.dp2px(this, 1), 0));
-        rv_list.setAdapter(new PopupPlayListAdapter());
+        rv_list.setAdapter(new PopupPlayListAdapter(this,playList));
 
         updateLoopInfo();
 
@@ -456,7 +456,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
                 ListenApplication.fixedThreadPool.execute(new Runnable() {
                     @Override
                     public void run() {
-                        DBManager.getInstance(MainActivity.this).deleteSong(playList);
+                        DBManager.getInstance().deleteSong(playList);
                     }
                 });
             }
@@ -471,7 +471,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
                 ListenApplication.fixedThreadPool.execute(new Runnable() {
                     @Override
                     public void run() {
-                        DBManager.getInstance(MainActivity.this).insertSong(playList);
+                        DBManager.getInstance().insertSong(playList);
                     }
                 });
             }

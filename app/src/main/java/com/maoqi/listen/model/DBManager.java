@@ -1,7 +1,6 @@
 package com.maoqi.listen.model;
 
 import android.content.ContentValues;
-import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -17,19 +16,17 @@ import java.util.List;
  */
 
 public class DBManager {
-    private Context context;
     private static DBManager manager;
     private DBHelper helper;
     private SQLiteDatabase db;
 
-    private DBManager(Context context) {
+    private DBManager() {
         checkDBNull();
-        this.context = context;
     }
 
-    public static DBManager getInstance(Context context) {
+    public static DBManager getInstance() {
         if (manager == null) {
-            manager = new DBManager(context);
+            manager = new DBManager();
         }
         return manager;
     }

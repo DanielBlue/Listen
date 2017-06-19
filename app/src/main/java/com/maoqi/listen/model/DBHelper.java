@@ -11,10 +11,10 @@ import com.maoqi.listen.Constant;
  */
 
 public class DBHelper extends SQLiteOpenHelper {
-    private static final String DB_NAME = "";
+    private static final String DB_NAME = "song";
     private static final int DB_VERSION = 1;
     String TABLE_PLAY_LIST = "CREATE TABLE IF NOT EXISTS " + Constant.TABLE_PLAY_LIST + "("
-            + "_id" + "INTEGER PRIMARY KEY AUTOINCREMENT"
+            + "_id" + " INTEGER PRIMARY KEY AUTOINCREMENT,"
             + Constant.SONG_URL + " TEXT NOT NULL,"
             + Constant.SONG_TITLE + " TEXT NOT NULL,"
             + Constant.SONG_ARTIST + " TEXT NOT NULL,"

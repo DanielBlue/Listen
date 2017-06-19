@@ -161,14 +161,14 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
                         @Override
                         public void onClick(View v) {
                             BaseSongBean bean = SongUtils.qq2Base(data.get(position));
-                            if (DBManager.getInstance(activity).isCollect(bean)) {
+                            if (DBManager.getInstance().isCollect(bean)) {
                                 bean.setCollect(false);
                                 TUtils.showShort(R.string.cancel_successful);
                             } else {
                                 bean.setCollect(true);
                                 TUtils.showShort(R.string.collect_successful);
                             }
-                            DBManager.getInstance(activity).updateCollect(bean);
+                            DBManager.getInstance().updateCollect(bean);
                         }
                     });
 

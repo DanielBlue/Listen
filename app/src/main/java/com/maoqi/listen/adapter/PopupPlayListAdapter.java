@@ -26,7 +26,10 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
     private Context context;
     private List<BaseSongBean> data;
 
-
+    public PopupPlayListAdapter(Context context, List<BaseSongBean> data) {
+        this.context = context;
+        this.data = data;
+    }
 
 
     @Override
