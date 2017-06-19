@@ -27,7 +27,7 @@ public class ListenApplication extends Application {
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
 //                .addInterceptor(new LoggerInterceptor("TAG"))
-                .connectTimeout(5000L, TimeUnit.MICROSECONDS)
+                .connectTimeout(5000L, TimeUnit.MILLISECONDS)
                 .readTimeout(5000L, TimeUnit.MILLISECONDS)
                 //其他配置
                 .build();
