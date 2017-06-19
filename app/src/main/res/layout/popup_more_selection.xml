@@ -1,52 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
     xmlns:tools="http://schemas.android.com/tools"
-    android:paddingTop="@dimen/base_margin"
-    android:paddingBottom="@dimen/base_margin"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/colorBaseBackground"
     android:orientation="vertical">
+
     <TextView
         android:id="@+id/tv_song_info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/divider_line"
+        android:background="@color/white"
         android:padding="@dimen/base_margin"
+        android:paddingTop="@dimen/base_margin"
         android:textColor="@color/textColorGray"
-        tools:text="歌曲:歌曲名"/>
-    <TextView
-        android:id="@+id/tv_add_list"
+        tools:text="歌曲:歌曲名" />
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="@dimen/base_margin"
-        android:textColor="@color/black"
-        android:text="@string/add_list"
-        android:textSize="@dimen/text_size_des"
-        android:gravity="center_vertical"
-        android:drawableLeft="@drawable/ic_play_circle_outline_black_24dp"
-        android:drawablePadding="@dimen/base_margin"
-        />
-    <TextView
-        android:id="@+id/tv_collect"
+        android:background="@color/white">
+
+        <TextView
+            android:id="@+id/tv_add_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/divider_line"
+            android:background="?selectableItemBackgroundBorderless"
+            android:drawableLeft="@drawable/ic_play_circle_outline_black_24dp"
+            android:drawablePadding="@dimen/base_margin"
+            android:gravity="center_vertical"
+            android:padding="@dimen/base_margin"
+            android:text="@string/add_list"
+            android:textColor="@color/black"
+            android:textSize="@dimen/text_size_des" />
+    </LinearLayout>
+
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="@dimen/base_margin"
-        android:textColor="@color/black"
-        android:text="@string/collect"
-        android:textSize="@dimen/text_size_des"
-        android:gravity="center_vertical"
-        android:drawableLeft="@drawable/ic_note_add_black_24dp"
-        android:drawablePadding="@dimen/base_margin"
-        />
-    <TextView
-        android:id="@+id/tv_download"
+        android:background="@color/white">
+
+        <TextView
+            android:id="@+id/tv_collect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/divider_line"
+            android:background="?selectableItemBackgroundBorderless"
+            android:drawableLeft="@drawable/ic_note_add_black_24dp"
+            android:drawablePadding="@dimen/base_margin"
+            android:gravity="center_vertical"
+            android:padding="@dimen/base_margin"
+            android:text="@string/collect"
+            android:textColor="@color/black"
+            android:textSize="@dimen/text_size_des" />
+
+    </LinearLayout>
+
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="@dimen/base_margin"
-        android:textColor="@color/black"
-        android:text="@string/download"
-        android:textSize="@dimen/text_size_des"
-        android:gravity="center_vertical"
-        android:drawableLeft="@drawable/ic_file_download_black_24dp"
-        android:drawablePadding="@dimen/base_margin"
-        />
+        android:background="@color/white"
+        android:paddingBottom="@dimen/base_margin">
+
+        <TextView
+            android:id="@+id/tv_download"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/divider_line"
+            android:background="?selectableItemBackgroundBorderless"
+            android:drawableLeft="@drawable/ic_file_download_black_24dp"
+            android:drawablePadding="@dimen/base_margin"
+            android:gravity="center_vertical"
+            android:padding="@dimen/base_margin"
+            android:text="@string/download"
+            android:textColor="@color/black"
+            android:textSize="@dimen/text_size_des" />
+    </LinearLayout>
 </LinearLayout>

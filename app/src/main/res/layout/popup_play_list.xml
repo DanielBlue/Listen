@@ -3,11 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/colorBaseBackground"
     android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/white">
 
         <LinearLayout
             android:id="@+id/ll_loop_style"
@@ -24,7 +26,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="@dimen/margin_small"
-                android:src="@drawable/ic_loop_black_18dp" />
+                android:src="@drawable/ic_loop_black_24dp" />
 
             <TextView
                 android:id="@+id/tv_loop_text"
@@ -32,6 +34,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textColor="@color/black"
+                android:textSize="@dimen/text_size_medium"
                 tools:text="单曲循环" />
         </LinearLayout>
 
@@ -42,12 +45,14 @@
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:background="?selectableItemBackgroundBorderless"
-            android:drawableLeft="@drawable/ic_delete_black_18dp"
+            android:drawableLeft="@drawable/ic_delete_black_24dp"
             android:drawablePadding="@dimen/margin_small"
+            android:gravity="center_vertical"
             android:padding="@dimen/base_margin"
             android:text="@string/clear"
-            android:gravity="center_vertical"
-            android:textColor="@color/black" />
+
+            android:textColor="@color/black"
+            android:textSize="@dimen/text_size_medium" />
 
         <TextView
             android:id="@+id/tv_collect"
@@ -55,20 +60,22 @@
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:layout_toStartOf="@id/tv_clear"
-            android:gravity="center_vertical"
             android:background="?selectableItemBackgroundBorderless"
-            android:drawableLeft="@drawable/ic_note_add_black_18dp"
+            android:drawableLeft="@drawable/ic_note_add_black_24dp"
             android:drawablePadding="@dimen/margin_small"
+            android:gravity="center_vertical"
             android:padding="@dimen/base_margin"
             android:text="@string/collect"
-            android:textColor="@color/black" />
-    </RelativeLayout>
+            android:textColor="@color/black"
+            android:textSize="@dimen/text_size_medium" />
 
+
+    </RelativeLayout>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"/>
     <android.support.v7.widget.RecyclerView
         android:id="@+id/rv_list"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-    </android.support.v7.widget.RecyclerView>
-
+        android:layout_height="match_parent" />
 </LinearLayout>

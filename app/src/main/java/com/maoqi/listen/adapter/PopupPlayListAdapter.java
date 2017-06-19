@@ -35,8 +35,13 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(context).inflate(R.layout.item_play_list,parent,false);
-        ViewHolder holder = new ViewHolder(view);
+        ViewHolder holder = new ViewHolder(view,viewType);
         return holder;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return position;
     }
 
     @Override
@@ -57,7 +62,7 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
         private ImageView iv_delete;
 
 
-        public ViewHolder(View itemView) {
+        public ViewHolder(View itemView, final int position) {
             super(itemView);
             rl_content = (RelativeLayout) itemView.findViewById(R.id.rl_content);
             tv_song_title = (TextView) itemView.findViewById(R.id.tv_song_title);
@@ -67,16 +72,16 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
             iv_delete.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    data.remove(getAdapterPosition());
+                    data.remove(position);
                     notifyDataSetChanged();
-                    EventBus.getDefault().post(new PlayListEvent(Constant.DELETE,data.get(getAdapterPosition()),getAdapterPosition()));
+                    EventBus.getDefault().post(new PlayListEvent(Constant.DELETE,data.get(position),position));
                 }
             });
 
             rl_content.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    EventBus.getDefault().post(new PlayListEvent(Constant.ADD,data.get(getAdapterPosition()),-1));
+                    EventBus.getDefault().post(new PlayListEvent(Constant.ADD,data.get(position),-1));
                 }
             });
         }

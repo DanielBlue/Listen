@@ -1,13 +1,13 @@
 package com.maoqi.listen.adapter;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.drawable.ColorDrawable;
 import android.support.v7.widget.RecyclerView;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
@@ -21,9 +21,11 @@ import com.maoqi.listen.model.DBManager;
 import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.XiamiSongBean;
-import com.maoqi.listen.service.PlayMusicService;
+import com.maoqi.listen.model.event.PlayListEvent;
 import com.maoqi.listen.util.SongUtils;
 import com.maoqi.listen.util.TUtils;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.util.List;
 
@@ -35,6 +37,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
     private List<XiamiSongBean> data;
     private Activity activity;
     private static PlayControllerCallback callback;
+    private static XiamiSongBean xiamiSongBean;
 
     public XiamiResultListAdapter(List<XiamiSongBean> data,Activity activity,PlayControllerCallback callback) {
         this.data = data;
@@ -80,30 +83,37 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
             ll_content = (LinearLayout) itemView.findViewById(R.id.ll_content);
             iv_more = (ImageView) itemView.findViewById(R.id.iv_more);
 
+
             ll_content.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    xiamiSongBean = data.get(position);
                     ((MainActivity)activity).setPlayState(Constant.ON_PLAY);
-                    XiamiSongBean xiamiSongBean = data.get(position);
-                    callback.updateSongInfo(xiamiSongBean.getAlbum_logo(),xiamiSongBean.getSong_name(),xiamiSongBean.getArtist_name());
+                    callback.updateSongInfo(xiamiSongBean.getAlbum_logo(), xiamiSongBean.getSong_name(), xiamiSongBean.getArtist_name());
 
-                    Intent intent = new Intent(activity, PlayMusicService.class);
-                    intent.putExtra("url",data.get(position).getListen_file());
-                    intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
-                    activity.startService(intent);
+                    EventBus.getDefault().post(new PlayListEvent(Constant.ADD,SongUtils.xiami2Base(xiamiSongBean),-1));
                 }
             });
 
             iv_more.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    xiamiSongBean = data.get(position);
                     View popupView = LayoutInflater.from(activity).inflate(R.layout.popup_more_selection, null);
                     PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     popupWindow.setContentView(popupView);
                     popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
                     popupWindow.setOutsideTouchable(true);
+                    setBgAlpha(activity,0.7f);
+                    popupWindow.setFocusable(true);
                     popupWindow.setClippingEnabled(false);
                     popupWindow.setAnimationStyle(R.style.AnimUpDown);
+                    popupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+                        @Override
+                        public void onDismiss() {
+                            setBgAlpha(activity,1f);
+                        }
+                    });
 
                     TextView tv_song_info = (TextView) popupView.findViewById(R.id.tv_song_info);
                     TextView tv_add_list = (TextView) popupView.findViewById(R.id.tv_add_list);
@@ -113,14 +123,15 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                     tv_add_list.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            ((MainActivity)activity).addSong2List(SongUtils.xiami2Base(data.get(position)));
+                            ((MainActivity) activity).addSong2List(SongUtils.xiami2Base(xiamiSongBean));
                         }
                     });
 
                     tv_collect.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            BaseSongBean bean = SongUtils.xiami2Base(data.get(position));
+                            xiamiSongBean = data.get(position);
+                            BaseSongBean bean = SongUtils.xiami2Base(xiamiSongBean);
                             if(DBManager.getInstance().isCollect(bean)){
                                 bean.setCollect(false);
                                 TUtils.showShort(R.string.cancel_successful);
@@ -143,6 +154,12 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                     popupWindow.showAtLocation(activity.findViewById(R.id.ll_content_parent), Gravity.BOTTOM, 0, 0);
                 }
             });
+        }
+
+        void setBgAlpha(Activity activity,float alpha){
+            WindowManager.LayoutParams lp = activity.getWindow().getAttributes();
+            lp.alpha = alpha;
+            activity.getWindow().setAttributes(lp);
         }
     }
 }

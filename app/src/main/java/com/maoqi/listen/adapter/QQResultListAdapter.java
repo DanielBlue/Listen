@@ -1,7 +1,6 @@
 package com.maoqi.listen.adapter;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.drawable.ColorDrawable;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -9,6 +8,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
@@ -22,12 +22,13 @@ import com.maoqi.listen.model.DBManager;
 import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.QQSongBean;
-import com.maoqi.listen.service.PlayMusicService;
+import com.maoqi.listen.model.event.PlayListEvent;
 import com.maoqi.listen.util.SongUtils;
 import com.maoqi.listen.util.TUtils;
 import com.zhy.http.okhttp.OkHttpUtils;
 import com.zhy.http.okhttp.callback.StringCallback;
 
+import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -89,17 +90,17 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
             ll_content = (LinearLayout) itemView.findViewById(R.id.ll_content);
             iv_more = (ImageView) itemView.findViewById(R.id.iv_more);
 
+            Log.d("ViewHolder", "position:" + position);
+
             ll_content.setOnClickListener(new View.OnClickListener() {
 
                 @Override
                 public void onClick(View v) {
-                    ((MainActivity) activity).setPlayState(Constant.ON_PLAY);
                     qqSongBean = data.get(position);
+                    ((MainActivity) activity).setPlayState(Constant.ON_PLAY);
                     String centerUrl = qqSongBean.getAlbummid().substring(qqSongBean.getAlbummid().length() - 2, qqSongBean.getAlbummid().length() - 1)
                             + "/" + qqSongBean.getAlbummid().substring(qqSongBean.getAlbummid().length() - 1) + "/" + qqSongBean.getAlbummid();
-                    String imgUrl = "http://imgcache.qq.com/music/photo/mid_album_300/" + centerUrl + ".jpg";
-                    Log.d("ViewHolder", imgUrl);
-                    callback.updateSongInfo(imgUrl, qqSongBean.getSongname(), qqSongBean.getSinger().get(0).getName());
+                    final String imgUrl = "http://imgcache.qq.com/music/photo/mid_album_300/" + centerUrl + ".jpg";
 
                     OkHttpUtils.get()
                             .url(Constant.QQ_KEY_URL)
@@ -121,11 +122,9 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
                                         String songUrl = "http://cc.stream.qqmusic.qq.com/C200"
                                                 + qqSongBean.getSongmid() + ".m4a?vkey="
                                                 + key + "&fromtag=0&guid=780782017";
+                                        callback.updateSongInfo(imgUrl, qqSongBean.getSongname(), qqSongBean.getSinger().get(0).getName());
+                                        EventBus.getDefault().post(new PlayListEvent(Constant.ADD, SongUtils.qq2Base(qqSongBean,songUrl,imgUrl), -1));
 
-                                        Intent intent = new Intent(activity, PlayMusicService.class);
-                                        intent.putExtra("url", songUrl);
-                                        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
-                                        activity.startService(intent);
                                     } catch (JSONException e) {
                                         e.printStackTrace();
                                     }
@@ -137,38 +136,109 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
             iv_more.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    qqSongBean = data.get(position);
                     View popupView = LayoutInflater.from(activity).inflate(R.layout.popup_more_selection, null);
                     PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     popupWindow.setContentView(popupView);
                     popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
+                    setBgAlpha(activity, 0.7f);
+                    popupWindow.setFocusable(true);
                     popupWindow.setOutsideTouchable(true);
                     popupWindow.setClippingEnabled(false);
                     popupWindow.setAnimationStyle(R.style.AnimUpDown);
+                    popupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+                        @Override
+                        public void onDismiss() {
+                            setBgAlpha(activity, 1f);
+                        }
+                    });
 
                     TextView tv_song_info = (TextView) popupView.findViewById(R.id.tv_song_info);
                     TextView tv_add_list = (TextView) popupView.findViewById(R.id.tv_add_list);
                     TextView tv_collect = (TextView) popupView.findViewById(R.id.tv_collect);
                     TextView tv_download = (TextView) popupView.findViewById(R.id.tv_download);
-                    tv_song_info.setText("歌曲:" + data.get(getAdapterPosition()).getSongname());
+                    tv_song_info.setText("歌曲:" + qqSongBean.getSongname());
                     tv_add_list.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            ((MainActivity) activity).addSong2List(SongUtils.qq2Base(data.get(position)));
+                            String centerUrl = qqSongBean.getAlbummid().substring(qqSongBean.getAlbummid().length() - 2, qqSongBean.getAlbummid().length() - 1)
+                                    + "/" + qqSongBean.getAlbummid().substring(qqSongBean.getAlbummid().length() - 1) + "/" + qqSongBean.getAlbummid();
+                            final String imgUrl = "http://imgcache.qq.com/music/photo/mid_album_300/" + centerUrl + ".jpg";
+
+                            OkHttpUtils.get()
+                                    .url(Constant.QQ_KEY_URL)
+                                    .build()
+                                    .execute(new StringCallback() {
+                                        @Override
+                                        public void onError(Call call, Exception e, int id) {
+                                            TUtils.showShort(R.string.net_error + "..." + e.getMessage());
+                                        }
+
+                                        @Override
+                                        public void onResponse(String response, int id) {
+
+                                            String json = response.substring(6, response.length() - 1);
+                                            try {
+                                                JSONObject jsonObject = new JSONObject(json);
+                                                String key = jsonObject.getString("key");
+
+                                                String songUrl = "http://cc.stream.qqmusic.qq.com/C200"
+                                                        + qqSongBean.getSongmid() + ".m4a?vkey="
+                                                        + key + "&fromtag=0&guid=780782017";
+                                                ((MainActivity) activity).addSong2List(SongUtils.qq2Base(data.get(position),songUrl,imgUrl));
+                                            } catch (JSONException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    });
+
+
+
                         }
                     });
 
                     tv_collect.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            BaseSongBean bean = SongUtils.qq2Base(data.get(position));
-                            if (DBManager.getInstance().isCollect(bean)) {
-                                bean.setCollect(false);
-                                TUtils.showShort(R.string.cancel_successful);
-                            } else {
-                                bean.setCollect(true);
-                                TUtils.showShort(R.string.collect_successful);
-                            }
-                            DBManager.getInstance().updateCollect(bean);
+                            qqSongBean = data.get(position);
+                            String centerUrl = qqSongBean.getAlbummid().substring(qqSongBean.getAlbummid().length() - 2, qqSongBean.getAlbummid().length() - 1)
+                                    + "/" + qqSongBean.getAlbummid().substring(qqSongBean.getAlbummid().length() - 1) + "/" + qqSongBean.getAlbummid();
+                            final String imgUrl = "http://imgcache.qq.com/music/photo/mid_album_300/" + centerUrl + ".jpg";
+
+                            OkHttpUtils.get()
+                                    .url(Constant.QQ_KEY_URL)
+                                    .build()
+                                    .execute(new StringCallback() {
+                                        @Override
+                                        public void onError(Call call, Exception e, int id) {
+                                            TUtils.showShort(R.string.net_error + "..." + e.getMessage());
+                                        }
+
+                                        @Override
+                                        public void onResponse(String response, int id) {
+
+                                            String json = response.substring(6, response.length() - 1);
+                                            try {
+                                                JSONObject jsonObject = new JSONObject(json);
+                                                String key = jsonObject.getString("key");
+
+                                                String songUrl = "http://cc.stream.qqmusic.qq.com/C200"
+                                                        + qqSongBean.getSongmid() + ".m4a?vkey="
+                                                        + key + "&fromtag=0&guid=780782017";
+                                                BaseSongBean bean = SongUtils.qq2Base(data.get(position),songUrl,imgUrl);
+                                                if (DBManager.getInstance().isCollect(bean)) {
+                                                    bean.setCollect(false);
+                                                    TUtils.showShort(R.string.cancel_successful);
+                                                } else {
+                                                    bean.setCollect(true);
+                                                    TUtils.showShort(R.string.collect_successful);
+                                                }
+                                                DBManager.getInstance().updateCollect(bean);
+                                            } catch (JSONException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    });
                         }
                     });
 
@@ -183,6 +253,12 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
                     popupWindow.showAtLocation(activity.findViewById(R.id.ll_content_parent), Gravity.BOTTOM, 0, 0);
                 }
             });
+        }
+
+        void setBgAlpha(Activity activity, float alpha) {
+            WindowManager.LayoutParams lp = activity.getWindow().getAttributes();
+            lp.alpha = alpha;
+            activity.getWindow().setAttributes(lp);
         }
     }
 }

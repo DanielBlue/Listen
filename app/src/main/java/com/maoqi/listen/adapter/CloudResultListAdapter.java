@@ -1,13 +1,13 @@
 package com.maoqi.listen.adapter;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.drawable.ColorDrawable;
 import android.support.v7.widget.RecyclerView;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
@@ -21,12 +21,13 @@ import com.maoqi.listen.model.DBManager;
 import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.CloudSongBean;
-import com.maoqi.listen.service.PlayMusicService;
+import com.maoqi.listen.model.event.PlayListEvent;
 import com.maoqi.listen.util.SongUtils;
 import com.maoqi.listen.util.TUtils;
 import com.zhy.http.okhttp.OkHttpUtils;
 import com.zhy.http.okhttp.callback.StringCallback;
 
+import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -120,10 +121,9 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
                                     try {
                                         JSONObject jsonObject = new JSONObject(json);
                                         String songUrl = jsonObject.getString("url");
-                                        Intent intent = new Intent(activity, PlayMusicService.class);
-                                        intent.putExtra("url", songUrl);
-                                        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
-                                        activity.startService(intent);
+
+                                        EventBus.getDefault().post(new PlayListEvent(Constant.ADD,SongUtils.cloud2Base(cloudSongBean,songUrl),-1));
+
                                     } catch (JSONException e) {
                                         e.printStackTrace();
                                     }
@@ -135,38 +135,96 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
             iv_more.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    cloudSongBean = data.get(position);
                     View popupView = LayoutInflater.from(activity).inflate(R.layout.popup_more_selection, null);
                     PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     popupWindow.setContentView(popupView);
                     popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
+                    popupWindow.setFocusable(true);
+                    setBgAlpha(activity,0.7f);
                     popupWindow.setOutsideTouchable(true);
                     popupWindow.setClippingEnabled(false);
                     popupWindow.setAnimationStyle(R.style.AnimUpDown);
+                    popupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+                        @Override
+                        public void onDismiss() {
+                            setBgAlpha(activity,1f);
+                        }
+                    });
 
                     TextView tv_song_info = (TextView) popupView.findViewById(R.id.tv_song_info);
                     TextView tv_add_list = (TextView) popupView.findViewById(R.id.tv_add_list);
                     TextView tv_collect = (TextView) popupView.findViewById(R.id.tv_collect);
                     TextView tv_download = (TextView) popupView.findViewById(R.id.tv_download);
-                    tv_song_info.setText("歌曲:"+data.get(getAdapterPosition()).getName());
+                    tv_song_info.setText("歌曲:"+cloudSongBean.getName());
                     tv_add_list.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            ((MainActivity)activity).addSong2List(SongUtils.cloud2Base(data.get(position)));
+                            String url = "http://lab.mkblog.cn/music/api.php?" +
+                                    "callback=jsonp&types=musicInfo&id=" + cloudSongBean.getId();
+                            OkHttpUtils.get()
+                                    .url(url)
+                                    .build()
+                                    .execute(new StringCallback() {
+                                        @Override
+                                        public void onError(Call call, Exception e, int id) {
+                                            TUtils.showShort(R.string.net_error + "..." + e.getMessage());
+                                        }
+
+                                        @Override
+                                        public void onResponse(String response, int id) {
+                                            String json = response.substring(6, response.length() - 1);
+
+                                            try {
+                                                JSONObject jsonObject = new JSONObject(json);
+                                                String songUrl = jsonObject.getString("url");
+                                                BaseSongBean bean = SongUtils.cloud2Base(cloudSongBean,songUrl);
+                                                ((MainActivity) activity).addSong2List(bean);
+                                            } catch (JSONException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    });
                         }
                     });
 
                     tv_collect.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            BaseSongBean bean = SongUtils.cloud2Base(data.get(position));
-                            if(DBManager.getInstance().isCollect(bean)){
-                                bean.setCollect(false);
-                                TUtils.showShort(R.string.cancel_successful);
-                            }else {
-                                bean.setCollect(true);
-                                TUtils.showShort(R.string.collect_successful);
-                            }
-                            DBManager.getInstance().updateCollect(bean);
+                            cloudSongBean = data.get(position);
+                            String url = "http://lab.mkblog.cn/music/api.php?" +
+                                    "callback=jsonp&types=musicInfo&id=" + cloudSongBean.getId();
+
+                            OkHttpUtils.get()
+                                    .url(url)
+                                    .build()
+                                    .execute(new StringCallback() {
+                                        @Override
+                                        public void onError(Call call, Exception e, int id) {
+                                            TUtils.showShort(R.string.net_error + "..." + e.getMessage());
+                                        }
+
+                                        @Override
+                                        public void onResponse(String response, int id) {
+                                            String json = response.substring(6, response.length() - 1);
+
+                                            try {
+                                                JSONObject jsonObject = new JSONObject(json);
+                                                String songUrl = jsonObject.getString("url");
+                                                BaseSongBean bean = SongUtils.cloud2Base(cloudSongBean,songUrl);
+                                                if(DBManager.getInstance().isCollect(bean)){
+                                                    bean.setCollect(false);
+                                                    TUtils.showShort(R.string.cancel_successful);
+                                                }else {
+                                                    bean.setCollect(true);
+                                                    TUtils.showShort(R.string.collect_successful);
+                                                }
+                                                DBManager.getInstance().updateCollect(bean);
+                                            } catch (JSONException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    });
                         }
                     });
 
@@ -181,6 +239,12 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
                     popupWindow.showAtLocation(activity.findViewById(R.id.ll_content_parent), Gravity.BOTTOM, 0, 0);
                 }
             });
+        }
+
+        void setBgAlpha(Activity activity,float alpha){
+            WindowManager.LayoutParams lp = activity.getWindow().getAttributes();
+            lp.alpha = alpha;
+            activity.getWindow().setAttributes(lp);
         }
     }
 

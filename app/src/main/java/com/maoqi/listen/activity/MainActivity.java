@@ -16,6 +16,8 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -96,6 +98,9 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
     private TextView tv_clear;
     private RecyclerView rv_list;
     int currentPlayPositon = -1;
+    private Window window;
+    private LinearLayout ll_loop_style;
+    private PopupPlayListAdapter playListAdapter;
 
 
     @Override
@@ -198,6 +203,9 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
             }
         }
         playList.add(bean);
+        if (playListAdapter != null) {
+            playListAdapter.notifyDataSetChanged();
+        }
         DBManager.getInstance().insertSong(bean);
         updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongArtist());
     }
@@ -361,8 +369,9 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
     public void changePlayList(PlayListEvent event) {
         switch (event.getTag()) {
             case Constant.ADD:
-                startPlay(event.getBean().getSongUrl());
                 addSong2List(event.getBean());
+                startPlay(event.getBean().getSongUrl());
+                currentPlayPositon = playList.size() - 1;
                 break;
             case Constant.DELETE:
                 playList.remove(event.getPosition());
@@ -421,17 +430,19 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
 
     private void showPlayList() {
         tv_loop_text = (TextView) popupView.findViewById(R.id.tv_loop_text);
+        ll_loop_style = (LinearLayout) popupView.findViewById(R.id.ll_loop_style);
         tv_collect = (TextView) popupView.findViewById(R.id.tv_collect);
         tv_clear = (TextView) popupView.findViewById(R.id.tv_clear);
         rv_list = (RecyclerView) popupView.findViewById(R.id.rv_list);
 
         rv_list.setLayoutManager(new LinearLayoutManager(this));
         rv_list.addItemDecoration(new SpacesItemDecoration(DensityUtils.dp2px(this, 1), 0));
-        rv_list.setAdapter(new PopupPlayListAdapter(this,playList));
+        playListAdapter = new PopupPlayListAdapter(this, playList);
+        rv_list.setAdapter(playListAdapter);
 
         updateLoopInfo();
 
-        tv_loop_text.setOnClickListener(new View.OnClickListener() {
+        ll_loop_style.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 switch (loopType) {
@@ -496,9 +507,23 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
     private void initPopupWindow() {
         popupWindow.setContentView(popupView);
         popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
+        popupWindow.setFocusable(true);
+        setBgAlpha(0.7f);
         popupWindow.setOutsideTouchable(true);
         popupWindow.setClippingEnabled(false);
         popupWindow.setAnimationStyle(R.style.AnimUpDown);
+        popupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+            @Override
+            public void onDismiss() {
+                setBgAlpha(1f);
+            }
+        });
+    }
+
+    void setBgAlpha(float alpha) {
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.alpha = alpha;
+        getWindow().setAttributes(lp);
     }
 
     public void updatePlayState() {
