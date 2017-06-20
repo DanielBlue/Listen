@@ -19,7 +19,6 @@ import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
 import com.maoqi.listen.activity.MainActivity;
 import com.maoqi.listen.model.DBManager;
-import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.QQSongBean;
 import com.maoqi.listen.model.event.PlayListEvent;
@@ -43,19 +42,17 @@ import okhttp3.Call;
 public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapter.ViewHolder> {
     private List<QQSongBean> data;
     private Activity activity;
-    public PlayControllerCallback callback;
     private static QQSongBean qqSongBean;
 
-    public QQResultListAdapter(List<QQSongBean> data, Activity activity, PlayControllerCallback callback) {
+    public QQResultListAdapter(List<QQSongBean> data, Activity activity) {
         this.data = data;
         this.activity = activity;
-        this.callback = callback;
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(ListenApplication.appContext).inflate(R.layout.item_result_list, parent, false);
-        ViewHolder holder = new ViewHolder(view, data, viewType, activity, callback);
+        ViewHolder holder = new ViewHolder(view, data, viewType,activity);
         return holder;
     }
 
@@ -83,7 +80,7 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
         LinearLayout ll_content;
         ImageView iv_more;
 
-        public ViewHolder(View itemView, final List<QQSongBean> data, final int position, final Activity activity, final PlayControllerCallback callback) {
+        public ViewHolder(View itemView, final List<QQSongBean> data, final int position, final Activity activity) {
             super(itemView);
             tv_title = (TextView) itemView.findViewById(R.id.tv_title);
             tv_artist = (TextView) itemView.findViewById(R.id.tv_artist);
@@ -122,7 +119,6 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
                                         String songUrl = "http://cc.stream.qqmusic.qq.com/C200"
                                                 + qqSongBean.getSongmid() + ".m4a?vkey="
                                                 + key + "&fromtag=0&guid=780782017";
-                                        callback.updateSongInfo(imgUrl, qqSongBean.getSongname(), qqSongBean.getSinger().get(0).getName());
                                         EventBus.getDefault().post(new PlayListEvent(Constant.ADD, SongUtils.qq2Base(qqSongBean,songUrl,imgUrl), -1));
 
                                     } catch (JSONException e) {
@@ -138,7 +134,7 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
                 public void onClick(View v) {
                     qqSongBean = data.get(position);
                     View popupView = LayoutInflater.from(activity).inflate(R.layout.popup_more_selection, null);
-                    PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    final PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     popupWindow.setContentView(popupView);
                     popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
                     setBgAlpha(activity, 0.7f);
@@ -186,6 +182,7 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
                                                         + qqSongBean.getSongmid() + ".m4a?vkey="
                                                         + key + "&fromtag=0&guid=780782017";
                                                 ((MainActivity) activity).addSong2List(SongUtils.qq2Base(data.get(position),songUrl,imgUrl));
+                                                popupWindow.dismiss();
                                             } catch (JSONException e) {
                                                 e.printStackTrace();
                                             }
@@ -234,6 +231,7 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
                                                     TUtils.showShort(R.string.collect_successful);
                                                 }
                                                 DBManager.getInstance().updateCollect(bean);
+                                                popupWindow.dismiss();
                                             } catch (JSONException e) {
                                                 e.printStackTrace();
                                             }
@@ -247,6 +245,7 @@ public class QQResultListAdapter extends RecyclerView.Adapter<QQResultListAdapte
                         public void onClick(View v) {
                             // TODO: 2017/6/19
                             TUtils.showShort("下载功能开发中");
+                            popupWindow.dismiss();
                         }
                     });
 

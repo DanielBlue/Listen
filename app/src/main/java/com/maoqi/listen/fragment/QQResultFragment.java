@@ -13,7 +13,6 @@ import com.maoqi.listen.R;
 import com.maoqi.listen.adapter.QQResultListAdapter;
 import com.maoqi.listen.adapter.SpacesItemDecoration;
 import com.maoqi.listen.model.bean.QQSongBean;
-import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.util.DensityUtils;
 
 import java.util.ArrayList;
@@ -33,7 +32,7 @@ public class QQResultFragment extends Fragment{
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_result_list,null);
         rv_list = (RecyclerView) view.findViewById(R.id.rv_list);
-        adapter = new QQResultListAdapter(data,getActivity(),(PlayControllerCallback) getActivity());
+        adapter = new QQResultListAdapter(data,getActivity());
         rv_list.setLayoutManager(new LinearLayoutManager(getActivity()));
         rv_list.addItemDecoration(new SpacesItemDecoration(0,0,0, DensityUtils.dp2px(getActivity(),1)));
         rv_list.setAdapter(adapter);

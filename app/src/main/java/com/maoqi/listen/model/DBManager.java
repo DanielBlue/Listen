@@ -48,7 +48,6 @@ public class DBManager {
         values.put(Constant.SONG_IMG_URL, bean.getSongImgUrl());
         values.put(Constant.LYRIC_URL, bean.getLyricUrl());
         values.put(Constant.SONG_ID, bean.getSongId());
-        values.put(Constant.IS_COLLECT, bean.getCollect());
         db.replace(Constant.TABLE_PLAY_LIST, null, values);
     }
 
@@ -56,17 +55,10 @@ public class DBManager {
         checkDBNull();
         List<BaseSongBean> list = new ArrayList();
         Cursor c = db.query(Constant.TABLE_PLAY_LIST, null, null, null, null, null, null);
-        BaseSongBean bean = new BaseSongBean();
+        BaseSongBean bean ;
         if (c != null && c.moveToFirst()) {
             do {
-//                String songUrl = c.getString(c.getColumnIndex(Constant.SONG_URL));
-//                String songTitle = c.getString(c.getColumnIndex(Constant.SONG_TITLE));
-//                String songArtist = c.getString(c.getColumnIndex(Constant.SONG_ARTIST));
-//                String songAlbum = c.getString(c.getColumnIndex(Constant.SONG_ALBUM));
-//                String songImgUrl = c.getString(c.getColumnIndex(Constant.SONG_IMG_URL));
-//                String lyricUrl = c.getString(c.getColumnIndex(Constant.LYRIC_URL));
-
-                bean.setId(c.getInt(c.getColumnIndex("_id")));
+                bean = new BaseSongBean();
                 bean.setSongUrl(c.getString(c.getColumnIndex(Constant.SONG_URL)));
                 bean.setSongTitle(c.getString(c.getColumnIndex(Constant.SONG_TITLE)));
                 bean.setSongArtist(c.getString(c.getColumnIndex(Constant.SONG_ARTIST)));
@@ -74,7 +66,6 @@ public class DBManager {
                 bean.setSongImgUrl(c.getString(c.getColumnIndex(Constant.SONG_IMG_URL)));
                 bean.setLyricUrl(c.getString(c.getColumnIndex(Constant.LYRIC_URL)));
                 bean.setSongId(c.getString(c.getColumnIndex(Constant.SONG_ID)));
-                bean.setCollect(c.getString(c.getColumnIndex(Constant.IS_COLLECT)).equals("1"));
                 list.add(bean);
             } while (c.moveToNext());
         }

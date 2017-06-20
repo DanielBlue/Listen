@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import com.maoqi.listen.Constant;
 import com.maoqi.listen.R;
+import com.maoqi.listen.activity.MainActivity;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.event.PlayListEvent;
 
@@ -47,7 +48,7 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         holder.tv_song_title.setText(data.get(position).getSongTitle());
-        holder.tv_song_title.setText(" - "+data.get(position).getSongArtist());
+        holder.tv_song_artist.setText(" - "+data.get(position).getSongArtist());
     }
 
     @Override
@@ -82,6 +83,7 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
                 @Override
                 public void onClick(View v) {
                     EventBus.getDefault().post(new PlayListEvent(Constant.ADD,data.get(position),-1));
+                    ((MainActivity)context).popupWindow.dismiss();
                 }
             });
         }

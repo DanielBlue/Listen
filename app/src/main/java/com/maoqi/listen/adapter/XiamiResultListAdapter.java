@@ -18,7 +18,6 @@ import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
 import com.maoqi.listen.activity.MainActivity;
 import com.maoqi.listen.model.DBManager;
-import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.XiamiSongBean;
 import com.maoqi.listen.model.event.PlayListEvent;
@@ -36,13 +35,11 @@ import java.util.List;
 public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultListAdapter.ViewHolder> {
     private List<XiamiSongBean> data;
     private Activity activity;
-    private static PlayControllerCallback callback;
     private static XiamiSongBean xiamiSongBean;
 
-    public XiamiResultListAdapter(List<XiamiSongBean> data,Activity activity,PlayControllerCallback callback) {
+    public XiamiResultListAdapter(List<XiamiSongBean> data,Activity activity) {
         this.data = data;
         this.activity = activity;
-        this.callback = callback;
     }
 
     @Override
@@ -89,7 +86,6 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                 public void onClick(View v) {
                     xiamiSongBean = data.get(position);
                     ((MainActivity)activity).setPlayState(Constant.ON_PLAY);
-                    callback.updateSongInfo(xiamiSongBean.getAlbum_logo(), xiamiSongBean.getSong_name(), xiamiSongBean.getArtist_name());
 
                     EventBus.getDefault().post(new PlayListEvent(Constant.ADD,SongUtils.xiami2Base(xiamiSongBean),-1));
                 }
@@ -100,7 +96,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                 public void onClick(View v) {
                     xiamiSongBean = data.get(position);
                     View popupView = LayoutInflater.from(activity).inflate(R.layout.popup_more_selection, null);
-                    PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    final PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     popupWindow.setContentView(popupView);
                     popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
                     popupWindow.setOutsideTouchable(true);
@@ -124,6 +120,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                         @Override
                         public void onClick(View v) {
                             ((MainActivity) activity).addSong2List(SongUtils.xiami2Base(xiamiSongBean));
+                            popupWindow.dismiss();
                         }
                     });
 
@@ -140,6 +137,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                                 TUtils.showShort(R.string.collect_successful);
                             }
                             DBManager.getInstance().updateCollect(bean);
+                            popupWindow.dismiss();
                         }
                     });
 
@@ -148,6 +146,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                         public void onClick(View v) {
                             // TODO: 2017/6/19
                             TUtils.showShort("下载功能开发中");
+                            popupWindow.dismiss();
                         }
                     });
 

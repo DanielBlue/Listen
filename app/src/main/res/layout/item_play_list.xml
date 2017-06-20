@@ -3,14 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?selectableItemBackgroundBorderless">
+    android:background="@color/white"
+    >
 
     <RelativeLayout
         android:id="@+id/rl_content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/white"
-        android:padding="@dimen/base_margin">
+        android:background="?selectableItemBackgroundBorderless"
+        android:padding="@dimen/fab_margin">
 
         <TextView
             android:id="@+id/tv_song_title"

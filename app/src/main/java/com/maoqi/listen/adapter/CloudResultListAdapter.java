@@ -18,7 +18,6 @@ import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
 import com.maoqi.listen.activity.MainActivity;
 import com.maoqi.listen.model.DBManager;
-import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.CloudSongBean;
 import com.maoqi.listen.model.event.PlayListEvent;
@@ -42,19 +41,17 @@ import okhttp3.Call;
 public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultListAdapter.ViewHolder> {
     private List<CloudSongBean> data;
     private Activity activity;
-    private PlayControllerCallback callback;
     private static CloudSongBean cloudSongBean;
 
-    public CloudResultListAdapter(Activity activity, List<CloudSongBean> data, PlayControllerCallback callback) {
+    public CloudResultListAdapter(Activity activity, List<CloudSongBean> data) {
         this.data = data;
         this.activity = activity;
-        this.callback = callback;
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(ListenApplication.appContext).inflate(R.layout.item_result_list, parent, false);
-        ViewHolder holder = new ViewHolder(view, data, viewType, activity, callback);
+        ViewHolder holder = new ViewHolder(view, data, viewType, activity);
         return holder;
     }
 
@@ -86,7 +83,7 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
         ImageView iv_more;
 
         public ViewHolder(View itemView, final List<CloudSongBean> data,
-                          final int position, final Activity activity, final PlayControllerCallback callback) {
+                          final int position, final Activity activity) {
             super(itemView);
             tv_title = (TextView) itemView.findViewById(R.id.tv_title);
             tv_artist = (TextView) itemView.findViewById(R.id.tv_artist);
@@ -98,9 +95,6 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
                     ((MainActivity) activity).setPlayState(Constant.ON_PLAY);
 
                     cloudSongBean = data.get(position);
-
-                    callback.updateSongInfo(cloudSongBean.getAlbum().getBlurPicUrl(),
-                            cloudSongBean.getName(), cloudSongBean.getArtists().get(0).getName());
 
                     String url = "http://lab.mkblog.cn/music/api.php?" +
                             "callback=jsonp&types=musicInfo&id=" + cloudSongBean.getId();
@@ -137,7 +131,7 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
                 public void onClick(View v) {
                     cloudSongBean = data.get(position);
                     View popupView = LayoutInflater.from(activity).inflate(R.layout.popup_more_selection, null);
-                    PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    final PopupWindow popupWindow = new PopupWindow(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     popupWindow.setContentView(popupView);
                     popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
                     popupWindow.setFocusable(true);
@@ -180,6 +174,7 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
                                                 String songUrl = jsonObject.getString("url");
                                                 BaseSongBean bean = SongUtils.cloud2Base(cloudSongBean,songUrl);
                                                 ((MainActivity) activity).addSong2List(bean);
+                                                popupWindow.dismiss();
                                             } catch (JSONException e) {
                                                 e.printStackTrace();
                                             }
@@ -220,6 +215,7 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
                                                     TUtils.showShort(R.string.collect_successful);
                                                 }
                                                 DBManager.getInstance().updateCollect(bean);
+                                                popupWindow.dismiss();
                                             } catch (JSONException e) {
                                                 e.printStackTrace();
                                             }
@@ -233,6 +229,7 @@ public class CloudResultListAdapter extends RecyclerView.Adapter<CloudResultList
                         public void onClick(View v) {
                             // TODO: 2017/6/19
                             TUtils.showShort("下载功能开发中");
+                            popupWindow.dismiss();
                         }
                     });
 

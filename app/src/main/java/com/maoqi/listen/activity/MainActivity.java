@@ -16,7 +16,6 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -39,7 +38,6 @@ import com.maoqi.listen.fragment.CloudResultFragment;
 import com.maoqi.listen.fragment.QQResultFragment;
 import com.maoqi.listen.fragment.XiamiResultFragment;
 import com.maoqi.listen.model.DBManager;
-import com.maoqi.listen.model.PlayControllerCallback;
 import com.maoqi.listen.model.SpHelper;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.CloudSongBean;
@@ -66,7 +64,7 @@ import java.util.List;
 
 import okhttp3.Call;
 
-public class MainActivity extends BaseToolbarActivity implements PlayControllerCallback, View.OnClickListener {
+public class MainActivity extends BaseToolbarActivity implements View.OnClickListener {
 
     Toolbar tbToolbar;
     ImageView ivAlbumArt;
@@ -92,13 +90,12 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
     private List<BaseSongBean> playList;
     private LinearLayout ll_content_parent;
     private View popupView;
-    private PopupWindow popupWindow;
+    public PopupWindow popupWindow;
     private TextView tv_loop_text;
     private TextView tv_collect;
     private TextView tv_clear;
     private RecyclerView rv_list;
     int currentPlayPositon = -1;
-    private Window window;
     private LinearLayout ll_loop_style;
     private PopupPlayListAdapter playListAdapter;
 
@@ -188,26 +185,30 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
             public void run() {
                 playList = DBManager.getInstance().getSongList();
                 if (playList != null && playList.size() > 0) {
-                    BaseSongBean bean = playList.get(playList.size() - 1);
-                    updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongUrl());
+                    final BaseSongBean bean = playList.get(playList.size() - 1);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongArtist());
+                        }
+                    });
+
+
                 }
             }
         });
     }
 
     public void addSong2List(BaseSongBean bean) {
-        for (int i = 0; i < playList.size(); i++) {
-            if (playList.get(i).getSongId().equals(bean.getSongId())) {
-                playList.remove(i);
-                break;
-            }
+        for (BaseSongBean b : playList) {
+            if (b.getSongId().equals(bean.getSongId()))
+                return;
         }
         playList.add(bean);
         if (playListAdapter != null) {
             playListAdapter.notifyDataSetChanged();
         }
         DBManager.getInstance().insertSong(bean);
-        updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongArtist());
     }
 
     private void requestServer(final String result) {
@@ -370,6 +371,8 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
         switch (event.getTag()) {
             case Constant.ADD:
                 addSong2List(event.getBean());
+                updateSongInfo(event.getBean().getSongImgUrl(), event.getBean().getSongTitle(),
+                        event.getBean().getSongArtist());
                 startPlay(event.getBean().getSongUrl());
                 currentPlayPositon = playList.size() - 1;
                 break;
@@ -381,10 +384,9 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
     }
 
     private void startPlay(String url) {
-        Intent intent = new Intent(this, PlayMusicService.class);
-        intent.putExtra("url", url);
-        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
-        startService(intent);
+        playState = Constant.ON_STOP;
+
+        updatePlayState(url);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -402,7 +404,6 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
         startPlay(playList.get(currentPlayPositon).getSongUrl());
     }
 
-    @Override
     public void updateSongInfo(String imgUrl, String songName, String artist) {
         Glide.with(this).load(imgUrl).into(ivAlbumArt);
         tvTitle.setText(songName);
@@ -420,7 +421,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
                 popupWindow.showAtLocation(ll_content_parent, Gravity.BOTTOM, 0, 0);
                 break;
             case R.id.ib_play_pause:
-                updatePlayState();
+                updatePlayState("");
                 break;
             case R.id.iv_clear:
                 et_search.setText("");
@@ -526,7 +527,7 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
         getWindow().setAttributes(lp);
     }
 
-    public void updatePlayState() {
+    public void updatePlayState(String url) {
         Intent intent = new Intent(this, PlayMusicService.class);
         switch (playState) {
             case Constant.ON_PLAY:
@@ -545,7 +546,11 @@ public class MainActivity extends BaseToolbarActivity implements PlayControllerC
                 if (playList != null && playList.size() > 0) {
                     ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
                     intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
-                    intent.putExtra("url", playList.get(currentPlayPositon).getSongUrl());
+                    if (url.isEmpty()) {
+                        intent.putExtra("url", playList.get(currentPlayPositon).getSongUrl());
+                    } else {
+                        intent.putExtra("url", url);
+                    }
                     startService(intent);
                     playState = Constant.ON_PLAY;
                 } else {
