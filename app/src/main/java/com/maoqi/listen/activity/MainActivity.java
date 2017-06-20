@@ -95,7 +95,7 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
     private TextView tv_collect;
     private TextView tv_clear;
     private RecyclerView rv_list;
-    int currentPlayPositon = -1;
+    public int currentPlayPositon = -1;
     private LinearLayout ll_loop_style;
     private PopupPlayListAdapter playListAdapter;
 
@@ -374,7 +374,6 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
                 updateSongInfo(event.getBean().getSongImgUrl(), event.getBean().getSongTitle(),
                         event.getBean().getSongArtist());
                 startPlay(event.getBean().getSongUrl());
-                currentPlayPositon = playList.size() - 1;
                 break;
             case Constant.DELETE:
                 playList.remove(event.getPosition());
@@ -385,7 +384,6 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
 
     private void startPlay(String url) {
         playState = Constant.ON_STOP;
-
         updatePlayState(url);
     }
 

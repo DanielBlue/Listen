@@ -83,6 +83,7 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
                 @Override
                 public void onClick(View v) {
                     EventBus.getDefault().post(new PlayListEvent(Constant.ADD,data.get(position),-1));
+                    ((MainActivity)context).currentPlayPositon = position;
                     ((MainActivity)context).popupWindow.dismiss();
                 }
             });
