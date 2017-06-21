@@ -13,18 +13,14 @@ import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
-import com.maoqi.listen.Constant;
 import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
-import com.maoqi.listen.activity.MainActivity;
 import com.maoqi.listen.model.DBManager;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.XiamiSongBean;
-import com.maoqi.listen.model.event.PlayListEvent;
+import com.maoqi.listen.service.PlayMusicService;
 import com.maoqi.listen.util.SongUtils;
 import com.maoqi.listen.util.TUtils;
-
-import org.greenrobot.eventbus.EventBus;
 
 import java.util.List;
 
@@ -37,15 +33,15 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
     private Activity activity;
     private static XiamiSongBean xiamiSongBean;
 
-    public XiamiResultListAdapter(List<XiamiSongBean> data,Activity activity) {
+    public XiamiResultListAdapter(List<XiamiSongBean> data, Activity activity) {
         this.data = data;
         this.activity = activity;
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(ListenApplication.appContext).inflate(R.layout.item_result_list,parent,false);
-        ViewHolder holder = new ViewHolder(view,data,viewType,activity);
+        View view = LayoutInflater.from(ListenApplication.appContext).inflate(R.layout.item_result_list, parent, false);
+        ViewHolder holder = new ViewHolder(view, data, viewType, activity);
         return holder;
     }
 
@@ -58,7 +54,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
     public void onBindViewHolder(ViewHolder holder, int position) {
         holder.tv_title.setText(data.get(position).getSong_name());
         holder.tv_artist.setText(data.get(position).getArtist_name()
-                +" - "+data.get(position).getAlbum_name());
+                + " - " + data.get(position).getAlbum_name());
     }
 
     @Override
@@ -66,7 +62,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
         return data.size();
     }
 
-    static class ViewHolder extends RecyclerView.ViewHolder{
+    static class ViewHolder extends RecyclerView.ViewHolder {
 
         TextView tv_title;
         TextView tv_artist;
@@ -85,9 +81,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                 @Override
                 public void onClick(View v) {
                     xiamiSongBean = data.get(position);
-                    ((MainActivity)activity).setPlayState(Constant.ON_PLAY);
-
-                    EventBus.getDefault().post(new PlayListEvent(Constant.ADD,SongUtils.xiami2Base(xiamiSongBean),-1));
+                    activity.startService(PlayMusicService.playNetIntent(activity, SongUtils.xiami2Base(xiamiSongBean)));
                 }
             });
 
@@ -100,14 +94,14 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                     popupWindow.setContentView(popupView);
                     popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
                     popupWindow.setOutsideTouchable(true);
-                    setBgAlpha(activity,0.7f);
+                    setBgAlpha(activity, 0.7f);
                     popupWindow.setFocusable(true);
                     popupWindow.setClippingEnabled(false);
                     popupWindow.setAnimationStyle(R.style.AnimUpDown);
                     popupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
                         @Override
                         public void onDismiss() {
-                            setBgAlpha(activity,1f);
+                            setBgAlpha(activity, 1f);
                         }
                     });
 
@@ -115,29 +109,29 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
                     TextView tv_add_list = (TextView) popupView.findViewById(R.id.tv_add_list);
                     TextView tv_collect = (TextView) popupView.findViewById(R.id.tv_collect);
                     TextView tv_download = (TextView) popupView.findViewById(R.id.tv_download);
-                    tv_song_info.setText("歌曲:"+data.get(getAdapterPosition()).getSong_name());
+                    tv_song_info.setText("歌曲:" + data.get(getAdapterPosition()).getSong_name());
                     tv_add_list.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            ((MainActivity) activity).addSong2List(SongUtils.xiami2Base(xiamiSongBean));
                             popupWindow.dismiss();
+                            activity.startService(PlayMusicService.addIntent(activity, SongUtils.xiami2Base(xiamiSongBean)));
                         }
                     });
 
                     tv_collect.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
+                            popupWindow.dismiss();
                             xiamiSongBean = data.get(position);
                             BaseSongBean bean = SongUtils.xiami2Base(xiamiSongBean);
-                            if(DBManager.getInstance().isCollect(bean)){
+                            if (DBManager.getInstance().isCollect(bean)) {
                                 bean.setCollect(false);
                                 TUtils.showShort(R.string.cancel_successful);
-                            }else {
+                            } else {
                                 bean.setCollect(true);
                                 TUtils.showShort(R.string.collect_successful);
                             }
                             DBManager.getInstance().updateCollect(bean);
-                            popupWindow.dismiss();
                         }
                     });
 
@@ -155,7 +149,7 @@ public class XiamiResultListAdapter extends RecyclerView.Adapter<XiamiResultList
             });
         }
 
-        void setBgAlpha(Activity activity,float alpha){
+        void setBgAlpha(Activity activity, float alpha) {
             WindowManager.LayoutParams lp = activity.getWindow().getAttributes();
             lp.alpha = alpha;
             activity.getWindow().setAttributes(lp);

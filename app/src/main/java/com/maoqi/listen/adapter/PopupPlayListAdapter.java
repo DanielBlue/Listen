@@ -9,13 +9,10 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.maoqi.listen.Constant;
 import com.maoqi.listen.R;
 import com.maoqi.listen.activity.MainActivity;
 import com.maoqi.listen.model.bean.BaseSongBean;
-import com.maoqi.listen.model.event.PlayListEvent;
-
-import org.greenrobot.eventbus.EventBus;
+import com.maoqi.listen.service.PlayMusicService;
 
 import java.util.List;
 
@@ -35,8 +32,8 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_play_list,parent,false);
-        ViewHolder holder = new ViewHolder(view,viewType);
+        View view = LayoutInflater.from(context).inflate(R.layout.item_play_list, parent, false);
+        ViewHolder holder = new ViewHolder(view, viewType);
         return holder;
     }
 
@@ -48,7 +45,14 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         holder.tv_song_title.setText(data.get(position).getSongTitle());
-        holder.tv_song_artist.setText(" - "+data.get(position).getSongArtist());
+        holder.tv_song_artist.setText(" - " + data.get(position).getSongArtist());
+        if (position == ((MainActivity) context).binder.getCurrentPlayPosition()) {
+            holder.tv_song_title.setTextColor(context.getResources().getColor(R.color.colorPrimary));
+            holder.tv_song_artist.setTextColor(context.getResources().getColor(R.color.colorPrimary));
+        } else {
+            holder.tv_song_title.setTextColor(context.getResources().getColor(R.color.black));
+            holder.tv_song_artist.setTextColor(context.getResources().getColor(R.color.textColorGray));
+        }
     }
 
     @Override
@@ -56,7 +60,7 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
         return data.size();
     }
 
-    class ViewHolder extends RecyclerView.ViewHolder{
+    class ViewHolder extends RecyclerView.ViewHolder {
         private RelativeLayout rl_content;
         private TextView tv_song_title;
         private TextView tv_song_artist;
@@ -73,18 +77,16 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
             iv_delete.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    data.remove(position);
+                    ((MainActivity) context).startService(PlayMusicService.deleteIntent(context, position));
                     notifyDataSetChanged();
-                    EventBus.getDefault().post(new PlayListEvent(Constant.DELETE,data.get(position),position));
                 }
             });
 
             rl_content.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    EventBus.getDefault().post(new PlayListEvent(Constant.ADD,data.get(position),-1));
-                    ((MainActivity)context).currentPlayPositon = position;
-                    ((MainActivity)context).popupWindow.dismiss();
+                    context.startService(PlayMusicService.playLocalIntent(context, position));
+                    ((MainActivity) context).popupWindow.dismiss();
                 }
             });
         }

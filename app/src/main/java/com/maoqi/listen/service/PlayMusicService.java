@@ -10,11 +10,13 @@ import android.os.IBinder;
 import android.support.annotation.Nullable;
 
 import com.maoqi.listen.Constant;
+import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
 import com.maoqi.listen.model.DBManager;
+import com.maoqi.listen.model.SpHelper;
 import com.maoqi.listen.model.bean.BaseSongBean;
-import com.maoqi.listen.model.event.PlayNextEvent;
 import com.maoqi.listen.model.event.PlayStateEvent;
+import com.maoqi.listen.model.event.UpdateControllerInfoEvent;
 import com.maoqi.listen.util.TUtils;
 
 import org.greenrobot.eventbus.EventBus;
@@ -29,10 +31,15 @@ import java.util.List;
 public class PlayMusicService extends Service implements MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnInfoListener, AudioManager.OnAudioFocusChangeListener {
 
     private MediaPlayer player;
-    private String url;
+    private BaseSongBean bean;
     private AudioManager audioManager;
     private List<BaseSongBean> playList;
     private PlayMusicBinder binder = new PlayMusicBinder();
+    private int currentPlayPosition;
+    private int loopType;
+    private int playState = Constant.ON_STOP;
+    private int position;
+    private static Intent intent;
 
     @Nullable
     @Override
@@ -43,17 +50,18 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     @Override
     public void onCreate() {
         super.onCreate();
-        EventBus.getDefault().register(this);
-        playList = DBManager.getInstance().getSongList();
         player = new MediaPlayer();
         player.setOnCompletionListener(this);
         player.setOnErrorListener(this);
         player.setOnPreparedListener(this);
         player.setOnInfoListener(this);
 
+        playList = DBManager.getInstance().getSongList();
+        currentPlayPosition = SpHelper.getInt(this, Constant.CURRENT_PLAY_POSITON, 0);
+        loopType = SpHelper.getInt(this, Constant.LOOP_TYPE, Constant.LIST_LOOP);
+
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-
     }
 
     @Override
@@ -61,9 +69,16 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         int behavior = intent.getExtras().getInt(Constant.BEHAVIOR);
 
         switch (behavior) {
-            case Constant.BEHAVIOR_PLAY:
-                url = intent.getExtras().getString("url");
-                play();
+            case Constant.BEHAVIOR_PLAY_NET:
+                bean = intent.getParcelableExtra(Constant.SONG_BEAN);
+                add2PlayList(bean);
+                currentPlayPosition = playList.size() - 1;
+                play(bean.getSongUrl());
+                break;
+            case Constant.BEHAVIOR_PLAY_LOCAL:
+                position = intent.getExtras().getInt(Constant.POSITION);
+                currentPlayPosition = position;
+                play(playList.get(position).getSongUrl());
                 break;
             case Constant.BEHAVIOR_PAUSE:
                 pause();
@@ -74,41 +89,80 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
             case Constant.BEHAVIOR_STOP:
                 stop();
                 break;
+            case Constant.BEHAVIOR_DELETE:
+                position = intent.getExtras().getInt(Constant.POSITION);
+                if (position == currentPlayPosition) {
+                    playNext();
+                } else if (currentPlayPosition > position) {
+                    currentPlayPosition -= 1;
+                }
+                DBManager.getInstance().deleteSong(playList.get(position));
+                playList.remove(position);
+                break;
+            case Constant.BEHAVIOR_ADD:
+                bean = intent.getParcelableExtra(Constant.SONG_BEAN);
+                add2PlayList(bean);
+                break;
         }
 
         return super.onStartCommand(intent, flags, startId);
     }
 
+    private void add2PlayList(BaseSongBean bean) {
+        for (BaseSongBean b : playList) {
+            if (b.getSongId().equals(bean.getSongId()))
+                return;
+        }
+        playList.add(bean);
+        DBManager.getInstance().insertSong(bean);
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        SpHelper.putInt(this, Constant.CURRENT_PLAY_POSITON, currentPlayPosition);
+        SpHelper.putInt(this, Constant.LOOP_TYPE, loopType);
+        return super.onUnbind(intent);
+    }
+
     @Override
     public void onDestroy() {
-        stop();
-        EventBus.getDefault().unregister(this);
+        SpHelper.putInt(this, Constant.CURRENT_PLAY_POSITON, currentPlayPosition);
+        SpHelper.putInt(this, Constant.LOOP_TYPE, loopType);
         super.onDestroy();
     }
 
-    public void pause() {
-        if (player != null && player.isPlaying()) {
-            player.pause();
-        }
-        audioManager.abandonAudioFocus(this);
+    public void setPlayState(int playState) {
+        this.playState = playState;
     }
 
-    public void play() {
+    public void play(String url) {
         if (player != null) {
             try {
                 player.reset();
                 player.setDataSource(url);
                 player.prepare();
                 player.start();
+                setPlayState(Constant.ON_PLAY);
+                EventBus.getDefault().post(new PlayStateEvent(playState));
+                EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
+    public void pause() {
+        if (player != null && player.isPlaying()) {
+            player.pause();
+            setPlayState(Constant.ON_PAUSE);
+        }
+        audioManager.abandonAudioFocus(this);
+    }
+
     public void continuePlay() {
         if (player != null && !player.isPlaying()) {
             player.start();
+            setPlayState(Constant.ON_PLAY);
         }
     }
 
@@ -116,13 +170,14 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         if (player != null && player.isPlaying()) {
             player.stop();
             player.release();
+            setPlayState(Constant.ON_STOP);
         }
         audioManager.abandonAudioFocus(this);
     }
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-        EventBus.getDefault().post(new PlayNextEvent());
+        playNext();
     }
 
     @Override
@@ -135,6 +190,25 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     @Override
     public void onPrepared(MediaPlayer mp) {
 
+    }
+
+    private void playNext() {
+        switch (loopType) {
+            case Constant.LIST_LOOP:
+                if (currentPlayPosition<playList.size()-1) {
+                    currentPlayPosition += 1;
+                }else if (currentPlayPosition==playList.size()-1){
+                    currentPlayPosition=0;
+                }
+                break;
+            case Constant.SINGLE_LOOP:
+                break;
+            case Constant.RANDOM_PLAY:
+                currentPlayPosition = (int) (Math.random() * playList.size());
+                break;
+        }
+        play(playList.get(currentPlayPosition).getSongUrl());
+        EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
     }
 
     @Override
@@ -165,14 +239,84 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         }
     }
 
-    class PlayMusicBinder extends Binder {
+    public class PlayMusicBinder extends Binder {
 
         public List<BaseSongBean> getPlayList() {
             return playList;
         }
 
+        public int getCurrentPlayPosition() {
+            return currentPlayPosition;
+        }
 
+        public int getLoopType() {
+            return loopType;
+        }
 
+        public int getPlayState() {
+            return playState;
+        }
+
+        public void setLoopType(int type) {
+            loopType = type;
+        }
+
+        public void clearPlayList() {
+            ListenApplication.fixedThreadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    DBManager.getInstance().deleteSong(playList);
+                }
+            });
+            playList.clear();
+            currentPlayPosition = 0;
+        }
+    }
+
+    public static Intent playNetIntent(Context context, BaseSongBean bean) {
+        intent = new Intent(context, PlayMusicService.class);
+        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY_NET);
+        intent.putExtra(Constant.SONG_BEAN, bean);
+        return intent;
+    }
+
+    public static Intent playLocalIntent(Context context, int position) {
+        intent = new Intent(context, PlayMusicService.class);
+        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY_LOCAL);
+        intent.putExtra(Constant.POSITION, position);
+        return intent;
+    }
+
+    public static Intent continueIntent(Context context) {
+        intent = new Intent(context, PlayMusicService.class);
+        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_CONTINUE);
+        return intent;
+    }
+
+    public static Intent pauseIntent(Context context) {
+        intent = new Intent(context, PlayMusicService.class);
+        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PAUSE);
+        return intent;
+    }
+
+    public static Intent stopIntent(Context context) {
+        intent = new Intent(context, PlayMusicService.class);
+        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_STOP);
+        return intent;
+    }
+
+    public static Intent addIntent(Context context, BaseSongBean bean) {
+        intent = new Intent(context, PlayMusicService.class);
+        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_ADD);
+        intent.putExtra(Constant.SONG_BEAN, bean);
+        return intent;
+    }
+
+    public static Intent deleteIntent(Context context, int position) {
+        intent = new Intent(context, PlayMusicService.class);
+        intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_DELETE);
+        intent.putExtra(Constant.POSITION, position);
+        return intent;
     }
 
 }

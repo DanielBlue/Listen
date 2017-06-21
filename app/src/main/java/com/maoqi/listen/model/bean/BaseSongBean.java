@@ -1,10 +1,13 @@
 package com.maoqi.listen.model.bean;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 /**
  * Created by maoqi on 2017/6/19.
  */
 
-public class BaseSongBean {
+public class BaseSongBean implements Parcelable {
 
     int id;
     String songUrl;
@@ -101,4 +104,46 @@ public class BaseSongBean {
     public void setCollect(boolean collect) {
         isCollect = collect;
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(this.id);
+        dest.writeString(this.songUrl);
+        dest.writeString(this.songTitle);
+        dest.writeString(this.songArtist);
+        dest.writeString(this.songAlbum);
+        dest.writeString(this.songImgUrl);
+        dest.writeString(this.lyricUrl);
+        dest.writeString(this.songId);
+        dest.writeByte(this.isCollect ? (byte) 1 : (byte) 0);
+    }
+
+    protected BaseSongBean(Parcel in) {
+        this.id = in.readInt();
+        this.songUrl = in.readString();
+        this.songTitle = in.readString();
+        this.songArtist = in.readString();
+        this.songAlbum = in.readString();
+        this.songImgUrl = in.readString();
+        this.lyricUrl = in.readString();
+        this.songId = in.readString();
+        this.isCollect = in.readByte() != 0;
+    }
+
+    public static final Parcelable.Creator<BaseSongBean> CREATOR = new Parcelable.Creator<BaseSongBean>() {
+        @Override
+        public BaseSongBean createFromParcel(Parcel source) {
+            return new BaseSongBean(source);
+        }
+
+        @Override
+        public BaseSongBean[] newArray(int size) {
+            return new BaseSongBean[size];
+        }
+    };
 }

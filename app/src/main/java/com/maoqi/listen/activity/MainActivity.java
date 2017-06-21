@@ -1,8 +1,11 @@
 package com.maoqi.listen.activity;
 
 import android.app.ProgressDialog;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.drawable.ColorDrawable;
+import android.os.IBinder;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
@@ -38,14 +41,12 @@ import com.maoqi.listen.fragment.CloudResultFragment;
 import com.maoqi.listen.fragment.QQResultFragment;
 import com.maoqi.listen.fragment.XiamiResultFragment;
 import com.maoqi.listen.model.DBManager;
-import com.maoqi.listen.model.SpHelper;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.CloudSongBean;
 import com.maoqi.listen.model.bean.QQSongBean;
 import com.maoqi.listen.model.bean.XiamiSongBean;
-import com.maoqi.listen.model.event.PlayListEvent;
-import com.maoqi.listen.model.event.PlayNextEvent;
 import com.maoqi.listen.model.event.PlayStateEvent;
+import com.maoqi.listen.model.event.UpdateControllerInfoEvent;
 import com.maoqi.listen.service.PlayMusicService;
 import com.maoqi.listen.util.DensityUtils;
 import com.maoqi.listen.util.KeyBoardUtils;
@@ -77,8 +78,6 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
     private final int CLOUD_MUSIC = 10000;
     private final int XIAMI_MUSIC = 10010;
     private final int QQ_MUSIC = 10086;
-    private int playState = Constant.ON_STOP;
-    private int loopType = Constant.LIST_LOOP;
     private List<Fragment> fragmentList;
     private CloudResultFragment cloudResultFragment;
     private XiamiResultFragment xiamiResultFragment;
@@ -87,7 +86,6 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
     private ViewPager vp_pager;
     private ProgressDialog progress;
     private ImageView iv_clear;
-    private List<BaseSongBean> playList;
     private LinearLayout ll_content_parent;
     private View popupView;
     public PopupWindow popupWindow;
@@ -95,16 +93,30 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
     private TextView tv_collect;
     private TextView tv_clear;
     private RecyclerView rv_list;
-    public int currentPlayPositon = -1;
     private LinearLayout ll_loop_style;
     private PopupPlayListAdapter playListAdapter;
+    public PlayMusicService.PlayMusicBinder binder;
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            binder = (PlayMusicService.PlayMusicBinder) service;
+            updatePlayState(binder.getPlayState());
+            if (binder.getPlayList() != null && binder.getPlayList().size() > 0) {
+                BaseSongBean bean = binder.getPlayList().get(binder.getCurrentPlayPosition());
+                updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongArtist());
+            }
+        }
 
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    };
 
     @Override
     protected void initView() {
         setContentView(R.layout.activity_main);
         progress = createProgressDialog(R.string.loading);
-        initData();
         ll_content_parent = (LinearLayout) findViewById(R.id.ll_content_parent);
         ivAlbumArt = (ImageView) findViewById(R.id.iv_album_art);
         tvTitle = (TextView) findViewById(R.id.tv_title);
@@ -177,38 +189,13 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
                 return false;
             }
         });
-
-
-        initPlayState();
-        ListenApplication.fixedThreadPool.execute(new Runnable() {
-            @Override
-            public void run() {
-                playList = DBManager.getInstance().getSongList();
-                if (playList != null && playList.size() > 0) {
-                    final BaseSongBean bean = playList.get(playList.size() - 1);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateSongInfo(bean.getSongImgUrl(), bean.getSongTitle(), bean.getSongArtist());
-                        }
-                    });
-
-
-                }
-            }
-        });
+        Intent intent = new Intent(this, PlayMusicService.class);
+        bindService(intent, connection, BIND_AUTO_CREATE);
     }
 
-    public void addSong2List(BaseSongBean bean) {
-        for (BaseSongBean b : playList) {
-            if (b.getSongId().equals(bean.getSongId()))
-                return;
-        }
-        playList.add(bean);
-        if (playListAdapter != null) {
-            playListAdapter.notifyDataSetChanged();
-        }
-        DBManager.getInstance().insertSong(bean);
+    @Override
+    protected void onResume() {
+        super.onResume();
     }
 
     private void requestServer(final String result) {
@@ -330,9 +317,6 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
 
     @Override
     protected void initData() {
-        currentPlayPositon = SpHelper.getInt(this, Constant.CURRENT_PLAY_POSITON, 0);
-        loopType = SpHelper.getInt(this, Constant.LOOP_TYPE, Constant.LIST_LOOP);
-
         fragmentList = new ArrayList<>();
         cloudResultFragment = new CloudResultFragment();
         xiamiResultFragment = new XiamiResultFragment();
@@ -357,49 +341,17 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        SpHelper.putInt(this, Constant.CURRENT_PLAY_POSITON, currentPlayPositon);
-        SpHelper.putInt(this, Constant.LOOP_TYPE, loopType);
+        unbindService(connection);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMessageEvent(PlayStateEvent event) {
-        setPlayState(event.getPlayState());
+        updatePlayState(event.getPlayState());
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void changePlayList(PlayListEvent event) {
-        switch (event.getTag()) {
-            case Constant.ADD:
-                addSong2List(event.getBean());
-                updateSongInfo(event.getBean().getSongImgUrl(), event.getBean().getSongTitle(),
-                        event.getBean().getSongArtist());
-                startPlay(event.getBean().getSongUrl());
-                break;
-            case Constant.DELETE:
-                playList.remove(event.getPosition());
-                DBManager.getInstance().deleteSong(event.getBean());
-                break;
-        }
-    }
-
-    private void startPlay(String url) {
-        playState = Constant.ON_STOP;
-        updatePlayState(url);
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void playNext(PlayNextEvent event) {
-        switch (loopType) {
-            case Constant.LIST_LOOP:
-                currentPlayPositon += 1;
-                break;
-            case Constant.SINGLE_LOOP:
-                break;
-            case Constant.RANDOM_PLAY:
-                currentPlayPositon = (int) (Math.random() * playList.size());
-                break;
-        }
-        startPlay(playList.get(currentPlayPositon).getSongUrl());
+    public void updateControllerInfo(UpdateControllerInfoEvent event) {
+        updateSongInfo(event.getBean().getSongImgUrl(), event.getBean().getSongTitle(), event.getBean().getSongArtist());
     }
 
     public void updateSongInfo(String imgUrl, String songName, String artist) {
@@ -419,11 +371,27 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
                 popupWindow.showAtLocation(ll_content_parent, Gravity.BOTTOM, 0, 0);
                 break;
             case R.id.ib_play_pause:
-                updatePlayState("");
-                break;
-            case R.id.iv_clear:
-                et_search.setText("");
-                break;
+                switch (binder.getPlayState()) {
+                    case Constant.ON_PLAY:
+                        ibPlayPause.setImageResource(R.drawable.ic_play_arrow_black_36dp);
+                        startService(PlayMusicService.pauseIntent(this));
+                        break;
+                    case Constant.ON_PAUSE:
+                        ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
+                        startService(PlayMusicService.continueIntent(this));
+                        break;
+                    case Constant.ON_STOP:
+                        ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
+                        if (binder.getPlayList() != null && binder.getPlayList().size() > 0) {
+                            startService(PlayMusicService.playLocalIntent(this, binder.getCurrentPlayPosition()));
+                        } else {
+                            TUtils.showShort(R.string.empty_list);
+                        }
+                        break;
+                    case R.id.iv_clear:
+                        et_search.setText("");
+                        break;
+                }
         }
     }
 
@@ -436,52 +404,47 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
 
         rv_list.setLayoutManager(new LinearLayoutManager(this));
         rv_list.addItemDecoration(new SpacesItemDecoration(DensityUtils.dp2px(this, 1), 0));
-        playListAdapter = new PopupPlayListAdapter(this, playList);
+        playListAdapter = new PopupPlayListAdapter(this, binder.getPlayList());
         rv_list.setAdapter(playListAdapter);
 
-        updateLoopInfo();
+        updateLoopInfo(binder.getLoopType());
 
         ll_loop_style.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                switch (loopType) {
+                switch (binder.getLoopType()) {
                     case Constant.LIST_LOOP:
-                        loopType = Constant.SINGLE_LOOP;
+                        binder.setLoopType(Constant.SINGLE_LOOP);
                         break;
                     case Constant.SINGLE_LOOP:
-                        loopType = Constant.RANDOM_PLAY;
+                        binder.setLoopType(Constant.RANDOM_PLAY);
                         break;
                     case Constant.RANDOM_PLAY:
-                        loopType = Constant.LIST_LOOP;
+                        binder.setLoopType(Constant.LIST_LOOP);
                         break;
                 }
-                updateLoopInfo();
+                updateLoopInfo(binder.getLoopType());
             }
         });
 
         tv_clear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                playList.clear();
-                ListenApplication.fixedThreadPool.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        DBManager.getInstance().deleteSong(playList);
-                    }
-                });
+                binder.clearPlayList();
+                playListAdapter.notifyDataSetChanged();
             }
         });
 
         tv_collect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                for (BaseSongBean bean : playList) {
+                for (BaseSongBean bean : binder.getPlayList()) {
                     bean.setCollect(true);
                 }
                 ListenApplication.fixedThreadPool.execute(new Runnable() {
                     @Override
                     public void run() {
-                        DBManager.getInstance().insertSong(playList);
+                        DBManager.getInstance().insertSong(binder.getPlayList());
                     }
                 });
             }
@@ -489,7 +452,7 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
 
     }
 
-    private void updateLoopInfo() {
+    private void updateLoopInfo(int loopType) {
         switch (loopType) {
             case Constant.LIST_LOOP:
                 tv_loop_text.setText(R.string.list_loop);
@@ -525,40 +488,7 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
         getWindow().setAttributes(lp);
     }
 
-    public void updatePlayState(String url) {
-        Intent intent = new Intent(this, PlayMusicService.class);
-        switch (playState) {
-            case Constant.ON_PLAY:
-                ibPlayPause.setImageResource(R.drawable.ic_play_arrow_black_36dp);
-                intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PAUSE);
-                startService(intent);
-                playState = Constant.ON_PAUSE;
-                break;
-            case Constant.ON_PAUSE:
-                ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
-                intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_CONTINUE);
-                startService(intent);
-                playState = Constant.ON_PLAY;
-                break;
-            case Constant.ON_STOP:
-                if (playList != null && playList.size() > 0) {
-                    ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
-                    intent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY);
-                    if (url.isEmpty()) {
-                        intent.putExtra("url", playList.get(currentPlayPositon).getSongUrl());
-                    } else {
-                        intent.putExtra("url", url);
-                    }
-                    startService(intent);
-                    playState = Constant.ON_PLAY;
-                } else {
-                    TUtils.showShort(R.string.empty_list);
-                }
-                break;
-        }
-    }
-
-    private void initPlayState() {
+    private void updatePlayState(int playState) {
         switch (playState) {
             case Constant.ON_PLAY:
                 ibPlayPause.setImageResource(R.drawable.ic_pause_black_36dp);
@@ -569,22 +499,4 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
                 break;
         }
     }
-
-    public void setPlayState(int playState) {
-        this.playState = playState;
-        initPlayState();
-    }
-
-    //    @Override
-//    public boolean onCreateOptionsMenu(Menu menu) {
-//        getMenuInflater().inflate(R.menu.menu_search, menu);
-//        SearchManager searchManager =
-//                (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-//        SearchView searchView =
-//                (SearchView) menu.findItem(R.id.menu_search).getActionView();
-//        searchView.setSearchableInfo(
-//                searchManager.getSearchableInfo(getComponentName()));
-//        searchView.setIconifiedByDefault(true);
-//        return super.onCreateOptionsMenu(menu);
-//    }
 }

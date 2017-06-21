@@ -9,10 +9,13 @@ public class Constant {
     public static final String BEHAVIOR = "behavior";
 
 
-    public static final int BEHAVIOR_PLAY = 100;
+    public static final int BEHAVIOR_PLAY_NET = 100;
     public static final int BEHAVIOR_PAUSE = 101;
     public static final int BEHAVIOR_STOP = 102;
     public static final int BEHAVIOR_CONTINUE = 103;
+    public static final int BEHAVIOR_PLAY_LOCAL = 104;
+    public static final int BEHAVIOR_DELETE = 105;
+    public static final int BEHAVIOR_ADD = 106;
 
     public static final int ON_PLAY = 10086;
     public static final int ON_PAUSE = 10010;
@@ -39,9 +42,9 @@ public class Constant {
     public static final int RANDOM_PLAY = 102;
 
 
-    public static final int ADD = 100;
-    public static final int DELETE = 101;
 
     public static final String CURRENT_PLAY_POSITON = "current_play_positon";
     public static final String LOOP_TYPE = "loop_type";
+    public static final String POSITION = "position";
+    public static final String SONG_BEAN = "song_bean";
 }

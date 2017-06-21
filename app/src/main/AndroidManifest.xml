@@ -23,7 +23,7 @@
                 android:name="android.app.searchable"
                 android:resource="@xml/searchable" />
         </activity>
-        <service android:name=".service.PlayMusicService"/>
+        <service android:name="com.maoqi.listen.service.PlayMusicService"/>
     </application>
 
 </manifest>
