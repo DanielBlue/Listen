@@ -5,11 +5,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
 import com.maoqi.listen.Constant;
 import com.maoqi.listen.R;
+import com.maoqi.listen.model.DBManager;
+import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.event.PlayNextEvent;
 import com.maoqi.listen.model.event.PlayStateEvent;
 import com.maoqi.listen.util.TUtils;
@@ -17,6 +20,7 @@ import com.maoqi.listen.util.TUtils;
 import org.greenrobot.eventbus.EventBus;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Created by maoqi on 2017/6/15.
@@ -27,16 +31,20 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     private MediaPlayer player;
     private String url;
     private AudioManager audioManager;
+    private List<BaseSongBean> playList;
+    private PlayMusicBinder binder = new PlayMusicBinder();
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return binder;
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
+        EventBus.getDefault().register(this);
+        playList = DBManager.getInstance().getSongList();
         player = new MediaPlayer();
         player.setOnCompletionListener(this);
         player.setOnErrorListener(this);
@@ -45,6 +53,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
 
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+
     }
 
     @Override
@@ -73,6 +82,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     @Override
     public void onDestroy() {
         stop();
+        EventBus.getDefault().unregister(this);
         super.onDestroy();
     }
 
@@ -154,4 +164,15 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                 break;
         }
     }
+
+    class PlayMusicBinder extends Binder {
+
+        public List<BaseSongBean> getPlayList() {
+            return playList;
+        }
+
+
+
+    }
+
 }
