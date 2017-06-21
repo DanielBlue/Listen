@@ -386,6 +386,7 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
                             startService(PlayMusicService.playLocalIntent(this, binder.getCurrentPlayPosition()));
                         } else {
                             TUtils.showShort(R.string.empty_list);
+                            ibPlayPause.setImageResource(R.drawable.ic_play_arrow_black_36dp);
                         }
                         break;
                     case R.id.iv_clear:
