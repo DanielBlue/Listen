@@ -1,17 +1,23 @@
 package com.maoqi.listen.service;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.widget.RemoteViews;
 
 import com.maoqi.listen.Constant;
 import com.maoqi.listen.ListenApplication;
 import com.maoqi.listen.R;
+import com.maoqi.listen.activity.MainActivity;
 import com.maoqi.listen.model.DBManager;
 import com.maoqi.listen.model.SpHelper;
 import com.maoqi.listen.model.bean.BaseSongBean;
@@ -46,6 +52,9 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     private int playState = Constant.ON_STOP;
     private int position;
     private static Intent intent;
+    private final int notificationId = 10000;
+    private NotificationManager mNotificationManager;
+    private RemoteViews remoteViews;
 
     @Nullable
     @Override
@@ -66,8 +75,24 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         currentPlayPosition = SpHelper.getInt(this, Constant.CURRENT_PLAY_POSITON, 0);
         loopType = SpHelper.getInt(this, Constant.LOOP_TYPE, Constant.LIST_LOOP);
 
+//        initNotification();
+
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+    }
+
+    private void initNotification() {
+        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        remoteViews = new RemoteViews(getPackageName(), R.layout.view_notification_song);
+
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 10086, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification notification = new Notification.Builder(this)
+                .setContent(remoteViews)
+                .setContentIntent(contentIntent)
+                .build();
+
+        mNotificationManager.notify(notificationId, notification);
     }
 
     @Override
@@ -181,6 +206,9 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                                             setPlayState(Constant.ON_PLAY);
                                             EventBus.getDefault().post(new PlayStateEvent(playState));
                                             EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
+                                            remoteViews.setImageViewUri(R.id.iv_icon, Uri.parse(bean.getSongImgUrl()));
+                                            remoteViews.setTextViewText(R.id.tv_title,bean.getSongTitle());
+                                            remoteViews.setTextViewText(R.id.tv_artist,bean.getSongArtist());
                                         } catch (IOException e) {
                                             e.printStackTrace();
                                         }

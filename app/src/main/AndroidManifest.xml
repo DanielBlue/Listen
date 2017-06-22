@@ -13,7 +13,8 @@
         android:name=".ListenApplication"
         android:theme="@style/AppTheme">
         <activity android:name=".activity.MainActivity"
-            android:windowSoftInputMode="adjustPan|adjustResize">
+            android:windowSoftInputMode="adjustPan|adjustResize"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
