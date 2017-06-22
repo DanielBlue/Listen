@@ -85,7 +85,7 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
     private TabLayout tb_tab;
     private ViewPager vp_pager;
     private ProgressDialog progress;
-    private ImageView iv_clear;
+    private ImageButton ib_clear;
     private LinearLayout ll_content_parent;
     private View popupView;
     public PopupWindow popupWindow;
@@ -112,6 +112,7 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
 
         }
     };
+    private ImageButton ib_play_next;
 
     @Override
     protected void initView() {
@@ -121,10 +122,12 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
         ivAlbumArt = (ImageView) findViewById(R.id.iv_album_art);
         tvTitle = (TextView) findViewById(R.id.tv_title);
         tvArtist = (TextView) findViewById(R.id.tv_artist);
-        iv_clear = (ImageView) findViewById(R.id.iv_clear);
+        ib_clear = (ImageButton) findViewById(R.id.ib_clear);
         ibPlayPause = (ImageButton) findViewById(R.id.ib_play_pause);
         ibList = (ImageButton) findViewById(R.id.ib_list);
-        iv_clear.setOnClickListener(this);
+        ib_clear.setOnClickListener(this);
+        ib_play_next = (ImageButton) findViewById(R.id.ib_play_next);
+        ib_play_next.setOnClickListener(this);
         ibPlayPause.setOnClickListener(this);
         ibList.setOnClickListener(this);
 
@@ -172,9 +175,9 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 if (hasFocus) {
-                    iv_clear.setVisibility(View.VISIBLE);
+                    ib_clear.setVisibility(View.VISIBLE);
                 } else {
-                    iv_clear.setVisibility(View.GONE);
+                    ib_clear.setVisibility(View.GONE);
                 }
             }
         });
@@ -389,10 +392,16 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
                             ibPlayPause.setImageResource(R.drawable.ic_play_arrow_black_36dp);
                         }
                         break;
-                    case R.id.iv_clear:
-                        et_search.setText("");
-                        break;
+
                 }
+            case R.id.ib_clear:
+                et_search.setText(" ");
+                break;
+            case R.id.ib_play_next:
+                if (binder != null) {
+                    binder.playNextSong();
+                }
+                break;
         }
     }
 
@@ -407,7 +416,9 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
         rv_list.addItemDecoration(new SpacesItemDecoration(DensityUtils.dp2px(this, 1), 0));
         playListAdapter = new PopupPlayListAdapter(this, binder.getPlayList());
         rv_list.setAdapter(playListAdapter);
-
+        if (binder != null && binder.getPlayList().size() > 0) {
+            rv_list.scrollToPosition(binder.getCurrentPlayPosition());
+        }
         updateLoopInfo(binder.getLoopType());
 
         ll_loop_style.setOnClickListener(new View.OnClickListener() {
@@ -479,6 +490,7 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
             @Override
             public void onDismiss() {
                 setBgAlpha(1f);
+                popupWindow.setFocusable(false);
             }
         });
     }

@@ -23,6 +23,7 @@ import java.util.List;
 public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdapter.ViewHolder> {
     private Context context;
     private List<BaseSongBean> data;
+    private BaseSongBean baseBean;
 
     public PopupPlayListAdapter(Context context, List<BaseSongBean> data) {
         this.context = context;
@@ -74,6 +75,7 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
             tv_song_artist = (TextView) itemView.findViewById(R.id.tv_song_artist);
             iv_delete = (ImageView) itemView.findViewById(R.id.iv_delete);
 
+
             iv_delete.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -85,8 +87,9 @@ public class PopupPlayListAdapter extends RecyclerView.Adapter<PopupPlayListAdap
             rl_content.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    context.startService(PlayMusicService.playLocalIntent(context, position));
+                    baseBean = data.get(position);
                     ((MainActivity) context).popupWindow.dismiss();
+                    context.startService(PlayMusicService.playLocalIntent(context, position));
                 }
             });
         }

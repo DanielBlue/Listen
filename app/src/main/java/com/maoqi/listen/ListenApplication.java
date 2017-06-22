@@ -2,6 +2,7 @@ package com.maoqi.listen;
 
 import android.app.Application;
 import android.content.Context;
+import android.util.Log;
 
 import com.zhy.http.okhttp.OkHttpUtils;
 
@@ -35,5 +36,9 @@ public class ListenApplication extends Application {
         OkHttpUtils.initClient(okHttpClient);
     }
 
-
+    @Override
+    public void onTerminate() {
+        Log.d("ListenApplication", "退出了");
+        super.onTerminate();
+    }
 }

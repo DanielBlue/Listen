@@ -1,5 +1,6 @@
 package com.maoqi.listen.util;
 
+import com.maoqi.listen.Constant;
 import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.bean.CloudSongBean;
 import com.maoqi.listen.model.bean.QQSongBean;
@@ -15,14 +16,14 @@ public class SongUtils {
         BaseSongBean baseSongBean = new BaseSongBean(songUrl, bean.getName(),
                 bean.getArtists().get(0).getName(),
                 bean.getAlbum().getName(), bean.getAlbum().getBlurPicUrl(),
-                "", String.valueOf(bean.getId()));
+                "", String.valueOf(bean.getId()), Constant.SOURCE_CLOUD);
         return baseSongBean;
     }
 
     public static BaseSongBean xiami2Base(XiamiSongBean bean) {
         BaseSongBean baseSongBean = new BaseSongBean(bean.getListen_file(), bean.getSong_name(),
                 bean.getArtist_name(), bean.getAlbum_name(), bean.getAlbum_logo(),
-                "", String.valueOf(bean.getSong_id()));
+                "", String.valueOf(bean.getSong_id()),Constant.SOURCE_XIAMI);
         return baseSongBean;
     }
 
@@ -36,6 +37,7 @@ public class SongUtils {
         baseSongBean.setSongImgUrl(imgUrl);
         baseSongBean.setLyricUrl("");
         baseSongBean.setSongId(String.valueOf(bean.getSongid()));
+        baseSongBean.setSource(Constant.SOURCE_QQ);
         return baseSongBean;
 
     }

@@ -10,6 +10,7 @@ import android.os.Parcelable;
 public class BaseSongBean implements Parcelable {
 
     int id;
+    int source;
     String songUrl;
     String songTitle;
     String songArtist;
@@ -23,7 +24,8 @@ public class BaseSongBean implements Parcelable {
     public BaseSongBean() {
     }
 
-    public BaseSongBean(String songUrl, String songTitle, String songArtist, String songAlbum, String songImgUrl, String lyricUrl,String songId) {
+    public BaseSongBean(String songUrl, String songTitle, String songArtist, String songAlbum,
+                        String songImgUrl, String lyricUrl,String songId,int source) {
         this.songUrl = songUrl;
         this.songTitle = songTitle;
         this.songArtist = songArtist;
@@ -31,6 +33,7 @@ public class BaseSongBean implements Parcelable {
         this.songImgUrl = songImgUrl;
         this.lyricUrl = lyricUrl;
         this.songId = songId;
+        this.source = source;
     }
 
     public int getId() {
@@ -105,6 +108,18 @@ public class BaseSongBean implements Parcelable {
         isCollect = collect;
     }
 
+    public int getSource() {
+        return source;
+    }
+
+    public void setSource(int source) {
+        this.source = source;
+    }
+
+    public boolean isCollect() {
+        return isCollect;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -113,6 +128,7 @@ public class BaseSongBean implements Parcelable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(this.id);
+        dest.writeInt(this.source);
         dest.writeString(this.songUrl);
         dest.writeString(this.songTitle);
         dest.writeString(this.songArtist);
@@ -125,6 +141,7 @@ public class BaseSongBean implements Parcelable {
 
     protected BaseSongBean(Parcel in) {
         this.id = in.readInt();
+        this.source = in.readInt();
         this.songUrl = in.readString();
         this.songTitle = in.readString();
         this.songArtist = in.readString();
@@ -135,7 +152,7 @@ public class BaseSongBean implements Parcelable {
         this.isCollect = in.readByte() != 0;
     }
 
-    public static final Parcelable.Creator<BaseSongBean> CREATOR = new Parcelable.Creator<BaseSongBean>() {
+    public static final Creator<BaseSongBean> CREATOR = new Creator<BaseSongBean>() {
         @Override
         public BaseSongBean createFromParcel(Parcel source) {
             return new BaseSongBean(source);

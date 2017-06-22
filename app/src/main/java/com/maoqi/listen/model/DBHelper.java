@@ -23,6 +23,7 @@ public class DBHelper extends SQLiteOpenHelper {
             + Constant.SONG_ID + " TEXT NOT NULL UNIQUE,"
             + Constant.LYRIC_URL + " TEXT,"
             + Constant.IS_COLLECT + "TEXT,"
+            + Constant.SOURCE + " INTEGER,"
             + Constant.RESERVED_1 + " TEXT,"
             + Constant.RESERVED_2 + " TEXT,"
             + Constant.RESERVED_3 + " TEXT,"

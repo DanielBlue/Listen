@@ -48,6 +48,7 @@ public class DBManager {
         values.put(Constant.SONG_IMG_URL, bean.getSongImgUrl());
         values.put(Constant.LYRIC_URL, bean.getLyricUrl());
         values.put(Constant.SONG_ID, bean.getSongId());
+        values.put(Constant.SOURCE,bean.getSource());
         db.replace(Constant.TABLE_PLAY_LIST, null, values);
     }
 
@@ -66,6 +67,7 @@ public class DBManager {
                 bean.setSongImgUrl(c.getString(c.getColumnIndex(Constant.SONG_IMG_URL)));
                 bean.setLyricUrl(c.getString(c.getColumnIndex(Constant.LYRIC_URL)));
                 bean.setSongId(c.getString(c.getColumnIndex(Constant.SONG_ID)));
+                bean.setSource(c.getInt(c.getColumnIndex(Constant.SOURCE)));
                 list.add(bean);
             } while (c.moveToNext());
         }
@@ -108,6 +110,12 @@ public class DBManager {
         return false;
     }
 
+    public void updateSongUrl(String songId,String songUrl) {
+        checkDBNull();
+        ContentValues values = new ContentValues();
+        values.put(Constant.SONG_URL, songUrl);
+        db.update(Constant.TABLE_PLAY_LIST, values, Constant.SONG_ID + " = ?", new String[]{songId});
+    }
 
     private void checkDBNull() {
         if (db == null) {

@@ -36,6 +36,7 @@ public class Constant {
     public static final String RESERVED_6 = "reserved_6";
     public static final String LYRIC_URL = "lyric_url";
     public static final String IS_COLLECT = "is_collect";
+    public static final String SOURCE = "source";
 
     public static final int LIST_LOOP = 100;
     public static final int SINGLE_LOOP = 101;
@@ -47,4 +48,9 @@ public class Constant {
     public static final String LOOP_TYPE = "loop_type";
     public static final String POSITION = "position";
     public static final String SONG_BEAN = "song_bean";
+
+    public static final int SOURCE_CLOUD = 100;
+    public static final int SOURCE_XIAMI = 101;
+    public static final int SOURCE_QQ = 102;
+
 }

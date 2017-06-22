@@ -18,11 +18,17 @@ import com.maoqi.listen.model.bean.BaseSongBean;
 import com.maoqi.listen.model.event.PlayStateEvent;
 import com.maoqi.listen.model.event.UpdateControllerInfoEvent;
 import com.maoqi.listen.util.TUtils;
+import com.zhy.http.okhttp.OkHttpUtils;
+import com.zhy.http.okhttp.callback.StringCallback;
 
 import org.greenrobot.eventbus.EventBus;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.List;
+
+import okhttp3.Call;
 
 /**
  * Created by maoqi on 2017/6/15.
@@ -65,53 +71,63 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        int behavior = intent.getExtras().getInt(Constant.BEHAVIOR);
+    public int onStartCommand(final Intent intent, int flags, int startId) {
+        ListenApplication.fixedThreadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                int behavior = intent.getExtras().getInt(Constant.BEHAVIOR);
 
-        switch (behavior) {
-            case Constant.BEHAVIOR_PLAY_NET:
-                bean = intent.getParcelableExtra(Constant.SONG_BEAN);
-                add2PlayList(bean);
-                currentPlayPosition = playList.size() - 1;
-                play(bean.getSongUrl());
-                break;
-            case Constant.BEHAVIOR_PLAY_LOCAL:
-                position = intent.getExtras().getInt(Constant.POSITION);
-                currentPlayPosition = position;
-                play(playList.get(position).getSongUrl());
-                break;
-            case Constant.BEHAVIOR_PAUSE:
-                pause();
-                break;
-            case Constant.BEHAVIOR_CONTINUE:
-                continuePlay();
-                break;
-            case Constant.BEHAVIOR_STOP:
-                stop();
-                break;
-            case Constant.BEHAVIOR_DELETE:
-                position = intent.getExtras().getInt(Constant.POSITION);
-                if (position == currentPlayPosition) {
-                    playNext();
-                } else if (currentPlayPosition > position) {
-                    currentPlayPosition -= 1;
+                switch (behavior) {
+                    case Constant.BEHAVIOR_PLAY_NET:
+                        bean = intent.getParcelableExtra(Constant.SONG_BEAN);
+                        add2PlayList(bean, true);
+                        play(bean);
+                        break;
+                    case Constant.BEHAVIOR_PLAY_LOCAL:
+                        currentPlayPosition = intent.getExtras().getInt(Constant.POSITION);
+                        play(playList.get(currentPlayPosition));
+                        break;
+                    case Constant.BEHAVIOR_PAUSE:
+                        pause();
+                        break;
+                    case Constant.BEHAVIOR_CONTINUE:
+                        continuePlay();
+                        break;
+                    case Constant.BEHAVIOR_STOP:
+                        stop();
+                        break;
+                    case Constant.BEHAVIOR_DELETE:
+                        position = intent.getExtras().getInt(Constant.POSITION);
+                        if (position == currentPlayPosition) {
+                            playNext();
+                        } else if (currentPlayPosition > position) {
+                            currentPlayPosition -= 1;
+                        }
+                        DBManager.getInstance().deleteSong(playList.get(position));
+                        playList.remove(position);
+                        break;
+                    case Constant.BEHAVIOR_ADD:
+                        bean = intent.getParcelableExtra(Constant.SONG_BEAN);
+                        add2PlayList(bean, false);
+                        break;
                 }
-                DBManager.getInstance().deleteSong(playList.get(position));
-                playList.remove(position);
-                break;
-            case Constant.BEHAVIOR_ADD:
-                bean = intent.getParcelableExtra(Constant.SONG_BEAN);
-                add2PlayList(bean);
-                break;
-        }
+            }
+        });
 
         return super.onStartCommand(intent, flags, startId);
     }
 
-    private void add2PlayList(BaseSongBean bean) {
-        for (BaseSongBean b : playList) {
-            if (b.getSongId().equals(bean.getSongId()))
+    private void add2PlayList(BaseSongBean bean, boolean isPlay) {
+        for (int i = 0; i < playList.size(); i++) {
+            if (playList.get(i).getSongId().equals(bean.getSongId())) {
+                if (isPlay) {
+                    currentPlayPosition = i;
+                }
                 return;
+            }
+        }
+        if (isPlay) {
+            currentPlayPosition = playList.size();
         }
         playList.add(bean);
         DBManager.getInstance().insertSong(bean);
@@ -135,16 +151,59 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         this.playState = playState;
     }
 
-    public void play(String url) {
+    public void play(final BaseSongBean bean) {
         if (player != null) {
             try {
                 player.reset();
-                player.setDataSource(url);
-                player.prepare();
-                player.start();
-                setPlayState(Constant.ON_PLAY);
-                EventBus.getDefault().post(new PlayStateEvent(playState));
-                EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
+                if (bean.getSource() == Constant.SOURCE_CLOUD) {
+                    String url = "http://lab.mkblog.cn/music/api.php?" +
+                            "callback=jsonp&types=musicInfo&id=" + bean.getSongId();
+
+                    OkHttpUtils.get()
+                            .url(url)
+                            .build()
+                            .execute(new StringCallback() {
+                                @Override
+                                public void onError(Call call, Exception e, int id) {
+                                    TUtils.showShort(R.string.net_error + "..." + e.getMessage());
+                                }
+
+                                @Override
+                                public void onResponse(String response, int id) {
+                                    String json = response.substring(6, response.length() - 1);
+                                    try {
+                                        JSONObject jsonObject = new JSONObject(json);
+                                        final String songUrl = jsonObject.getString("url");
+                                        try {
+                                            player.setDataSource(songUrl);
+                                            player.prepare();
+                                            player.start();
+                                            setPlayState(Constant.ON_PLAY);
+                                            EventBus.getDefault().post(new PlayStateEvent(playState));
+                                            EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+                                        ListenApplication.fixedThreadPool.execute(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                bean.setSongUrl(songUrl);
+                                                DBManager.getInstance().updateSongUrl(bean.getSongId(), bean.getSongUrl());
+                                            }
+                                        });
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            });
+                } else {
+                    player.setDataSource(bean.getSongUrl());
+                    player.prepare();
+                    player.start();
+                    setPlayState(Constant.ON_PLAY);
+                    EventBus.getDefault().post(new PlayStateEvent(playState));
+                    EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -195,19 +254,20 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     private void playNext() {
         switch (loopType) {
             case Constant.LIST_LOOP:
-                if (currentPlayPosition<playList.size()-1) {
+                if (currentPlayPosition < playList.size() - 1) {
                     currentPlayPosition += 1;
-                }else if (currentPlayPosition==playList.size()-1){
-                    currentPlayPosition=0;
+                } else if (currentPlayPosition == playList.size() - 1) {
+                    currentPlayPosition = 0;
                 }
                 break;
             case Constant.SINGLE_LOOP:
                 break;
             case Constant.RANDOM_PLAY:
-                currentPlayPosition = (int) (Math.random() * playList.size());
+                double b = Math.random();
+                currentPlayPosition = (int) (b * playList.size());
                 break;
         }
-        play(playList.get(currentPlayPosition).getSongUrl());
+        play(playList.get(currentPlayPosition));
         EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
     }
 
@@ -270,6 +330,10 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
             });
             playList.clear();
             currentPlayPosition = 0;
+        }
+
+        public void playNextSong() {
+            playNext();
         }
     }
 
