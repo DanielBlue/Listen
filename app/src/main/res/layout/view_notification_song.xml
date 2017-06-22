@@ -67,7 +67,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:layout_toStartOf="@id/iv_play_pause"
+                android:layout_toStartOf="@+id/iv_play_pause"
                 android:padding="@dimen/base_margin"
                 android:src="@drawable/ic_favorite_border_black_36dp" />
 
@@ -84,7 +84,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:layout_toEndOf="@id/iv_play_pause"
+                android:layout_toEndOf="@+id/iv_play_pause"
                 android:padding="@dimen/base_margin"
                 android:src="@drawable/ic_skip_next_black_36dp" />
 
