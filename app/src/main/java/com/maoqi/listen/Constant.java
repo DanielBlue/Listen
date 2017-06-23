@@ -54,4 +54,5 @@ public class Constant {
     public static final int SOURCE_XIAMI = 101;
     public static final int SOURCE_QQ = 102;
 
+    public static final String BITMAP = "bitmap";
 }

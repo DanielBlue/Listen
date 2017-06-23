@@ -115,7 +115,12 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         ListenApplication.fixedThreadPool.execute(new Runnable() {
             @Override
             public void run() {
-                int behavior = intent.getExtras()!=null?intent.getExtras().getInt(Constant.BEHAVIOR):0;
+                int behavior = 0;
+                try {
+                    behavior = intent.getExtras() != null ? intent.getExtras().getInt(Constant.BEHAVIOR) : 0;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 switch (behavior) {
                     case Constant.BEHAVIOR_PLAY_NET:
                         bean = intent.getParcelableExtra(Constant.SONG_BEAN);
@@ -212,87 +217,61 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     }
 
     public void play(final BaseSongBean bean) {
+        ListenApplication.fixedThreadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
+                setPlayState(Constant.ON_PLAY);
+                EventBus.getDefault().post(new PlayStateEvent(playState));
+                updateNotificationInfo(playList.get(currentPlayPosition));
+            }
+        });
         if (player != null) {
-            try {
-                player.reset();
-                if (bean.getSource() == Constant.SOURCE_CLOUD) {
-                    String url = "http://lab.mkblog.cn/music/api.php?" +
-                            "callback=jsonp&types=musicInfo&id=" + bean.getSongId();
+            if (bean.getSource() == Constant.SOURCE_CLOUD) {
+                OkHttpUtils.getInstance().cancelTag(this);
+                String url = "http://lab.mkblog.cn/music/api.php?" +
+                        "callback=jsonp&types=musicInfo&id=" + bean.getSongId();
 
-                    OkHttpUtils.get()
-                            .url(url)
-                            .build()
-                            .execute(new StringCallback() {
-                                @Override
-                                public void onError(Call call, Exception e, int id) {
-                                    TUtils.showShort(R.string.net_error + "..." + e.getMessage());
-                                }
+                OkHttpUtils.get()
+                        .url(url)
+                        .tag(this)
+                        .build()
+                        .execute(new StringCallback() {
+                            @Override
+                            public void onError(Call call, Exception e, int id) {
+                                TUtils.showShort(R.string.net_error + "..." + e.getMessage());
+                            }
 
-                                @Override
-                                public void onResponse(String response, int id) {
+                            @Override
+                            public void onResponse(String response, int id) {
+                                String json = response.substring(6, response.length() - 1);
+                                try {
+                                    JSONObject jsonObject = new JSONObject(json);
+                                    final String songUrl = jsonObject.getString("url");
+                                    start(songUrl);
                                     ListenApplication.fixedThreadPool.execute(new Runnable() {
                                         @Override
                                         public void run() {
-                                            EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
-                                            setPlayState(Constant.ON_PLAY);
-                                            EventBus.getDefault().post(new PlayStateEvent(playState));
-                                            updateNotificationInfo(playList.get(currentPlayPosition));
+                                            bean.setSongUrl(songUrl);
+                                            DBManager.getInstance().updateSongUrl(bean.getSongId(), bean.getSongUrl());
                                         }
                                     });
-                                    String json = response.substring(6, response.length() - 1);
-                                    try {
-                                        JSONObject jsonObject = new JSONObject(json);
-                                        final String songUrl = jsonObject.getString("url");
-                                        try {
-                                            player.setDataSource(songUrl);
-                                            player.prepare();
-                                            player.start();
-//                                            remoteViews.setImageViewUri(R.id.iv_icon, Uri.parse(bean.getSongImgUrl()));
-//                                            remoteViews.setTextViewText(R.id.tv_title,bean.getSongTitle());
-//                                            remoteViews.setTextViewText(R.id.tv_artist,bean.getSongArtist());
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
-                                            setPlayState(Constant.ON_STOP);
-                                            EventBus.getDefault().post(new PlayStateEvent(playState));
-                                        }
-                                        ListenApplication.fixedThreadPool.execute(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                bean.setSongUrl(songUrl);
-                                                DBManager.getInstance().updateSongUrl(bean.getSongId(), bean.getSongUrl());
-                                            }
-                                        });
-                                    } catch (JSONException e) {
-                                        e.printStackTrace();
-                                    }
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
                                 }
-                            });
-                } else {
-                    ListenApplication.fixedThreadPool.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
-                            setPlayState(Constant.ON_PLAY);
-                            EventBus.getDefault().post(new PlayStateEvent(playState));
-                            updateNotificationInfo(playList.get(currentPlayPosition));
-                        }
-                    });
-                    player.setDataSource(bean.getSongUrl());
-                    player.prepare();
-                    player.start();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                setPlayState(Constant.ON_STOP);
-                EventBus.getDefault().post(new PlayStateEvent(playState));
-                setNotificationPlayState(Constant.ON_STOP);
+                            }
+                        });
+            } else {
+                start(bean.getSongUrl());
             }
         }
     }
 
     private void updateNotificationInfo(final BaseSongBean baseSongBean) {
+        OkHttpUtils.getInstance().cancelTag(Constant.BITMAP);
         OkHttpUtils
                 .get()
+                .tag(Constant.BITMAP)
                 .url(baseSongBean.getSongImgUrl())
                 .build()
                 .execute(new BitmapCallback() {
@@ -302,13 +281,18 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                     }
 
                     @Override
-                    public void onResponse(Bitmap response, int id) {
-                        remoteViews.setImageViewBitmap(R.id.iv_album_art, response);
-                        remoteViews.setTextViewText(R.id.tv_title, baseSongBean.getSongTitle());
-                        remoteViews.setTextViewText(R.id.tv_artist, baseSongBean.getSongArtist());
-                        notification = builder.build();
-                        notification.flags |= Notification.FLAG_NO_CLEAR;
-                        startForeground(notificationId,notification);
+                    public void onResponse(final Bitmap response, int id) {
+                        ListenApplication.fixedThreadPool.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                remoteViews.setImageViewBitmap(R.id.iv_album_art, response);
+                                remoteViews.setTextViewText(R.id.tv_title, baseSongBean.getSongTitle());
+                                remoteViews.setTextViewText(R.id.tv_artist, baseSongBean.getSongArtist());
+                                notification = builder.build();
+                                notification.flags |= Notification.FLAG_NO_CLEAR;
+                                startForeground(notificationId, notification);
+                            }
+                        });
                     }
                 });
     }
@@ -321,7 +305,21 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         }
         notification = builder.build();
         notification.flags |= Notification.FLAG_NO_CLEAR;
-        startForeground(notificationId,notification);
+        startForeground(notificationId, notification);
+    }
+
+    public synchronized void start(String songUrl) {
+        try {
+            player.reset();
+            player.setDataSource(songUrl);
+            player.prepare();
+            player.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+            setPlayState(Constant.ON_STOP);
+            EventBus.getDefault().post(new PlayStateEvent(playState));
+            setNotificationPlayState(Constant.ON_STOP);
+        }
     }
 
     public void pause() {
@@ -405,7 +403,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                 break;
             case AudioManager.AUDIOFOCUS_LOSS://你已经失去了音频焦点很长时间了。你必须停止所有的音频播放
                 stop();
-                player.release();
                 player = null;
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT://你暂时失去了音频焦点

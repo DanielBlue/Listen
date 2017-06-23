@@ -4,6 +4,7 @@ import android.app.Application;
 import android.content.Context;
 import android.util.Log;
 
+import com.tencent.bugly.crashreport.CrashReport;
 import com.zhy.http.okhttp.OkHttpUtils;
 
 import java.util.concurrent.ExecutorService;
@@ -25,7 +26,7 @@ public class ListenApplication extends Application {
     public void onCreate() {
         super.onCreate();
         appContext = getApplicationContext();
-
+        CrashReport.initCrashReport(getApplicationContext(), "ac78be3b3e", true);
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
 //                .addInterceptor(new LoggerInterceptor("TAG"))
                 .connectTimeout(5000L, TimeUnit.MILLISECONDS)
