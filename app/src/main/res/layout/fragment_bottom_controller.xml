@@ -18,7 +18,7 @@
         android:layout_marginStart="@dimen/base_margin"
         android:orientation="vertical"
         android:layout_toEndOf="@id/iv_album_art"
-        android:layout_toStartOf="@+id/ib_play_next"
+        android:layout_toStartOf="@+id/ib_list"
         android:layout_centerVertical="true"
         >
         <TextView
@@ -51,23 +51,12 @@
     </LinearLayout>
 
     <ImageButton
-        android:id="@+id/ib_play_next"
-        android:layout_centerVertical="true"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="@dimen/base_margin"
-        android:layout_toStartOf="@+id/ib_play_pause"
-        android:background="?selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_skip_next_black_36dp"
-        />
-
-    <ImageButton
         android:id="@+id/ib_play_pause"
         android:layout_centerVertical="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="@dimen/base_margin"
-        android:layout_toStartOf="@+id/ib_list"
+        android:layout_toStartOf="@+id/ib_play_next"
         android:background="?selectableItemBackgroundBorderless"
         tools:src="@drawable/ic_play_arrow_black_36dp"
         />
@@ -79,8 +68,18 @@
         android:paddingTop="@dimen/base_margin"
         android:paddingEnd="@dimen/margin_small"
         android:paddingBottom="@dimen/base_margin"
-        android:layout_alignParentEnd="true"
+        android:layout_toStartOf="@+id/ib_play_pause"
         android:background="?selectableItemBackgroundBorderless"
         android:src="@drawable/ic_playlist_play_black_36dp"
+        />
+    <ImageButton
+        android:id="@+id/ib_play_next"
+        android:layout_centerVertical="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/base_margin"
+        android:layout_alignParentEnd="true"
+        android:background="?selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_skip_next_black_36dp"
         />
 </RelativeLayout>

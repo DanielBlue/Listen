@@ -6,11 +6,13 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
 import android.widget.RemoteViews;
 
 import com.maoqi.listen.Constant;
@@ -24,6 +26,7 @@ import com.maoqi.listen.model.event.PlayStateEvent;
 import com.maoqi.listen.model.event.UpdateControllerInfoEvent;
 import com.maoqi.listen.util.TUtils;
 import com.zhy.http.okhttp.OkHttpUtils;
+import com.zhy.http.okhttp.callback.BitmapCallback;
 import com.zhy.http.okhttp.callback.StringCallback;
 
 import org.greenrobot.eventbus.EventBus;
@@ -54,6 +57,8 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     private final int notificationId = 10000;
     private NotificationManager mNotificationManager;
     private RemoteViews remoteViews;
+    private NotificationCompat.Builder builder;
+    private Notification notification;
 
     @Nullable
     @Override
@@ -73,34 +78,44 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         playList = DBManager.getInstance().getSongList();
         currentPlayPosition = SpHelper.getInt(this, Constant.CURRENT_PLAY_POSITON, 0);
         loopType = SpHelper.getInt(this, Constant.LOOP_TYPE, Constant.LIST_LOOP);
-
-//        initNotification();
+        initNotification();
 
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+
     }
 
     private void initNotification() {
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         remoteViews = new RemoteViews(getPackageName(), R.layout.view_notification_song);
 
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent contentIntent = PendingIntent.getActivity(this, 10086, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification notification = new Notification.Builder(this)
-                .setContent(remoteViews)
-                .setContentIntent(contentIntent)
-                .build();
+        Intent playNextIntent = new Intent(this, PlayMusicService.class);
+        playNextIntent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY_NEXT);
+        PendingIntent playNextPendingIntent = PendingIntent.getService(this, 10086, playNextIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        remoteViews.setOnClickPendingIntent(R.id.ib_play_next, playNextPendingIntent);
 
-        mNotificationManager.notify(notificationId, notification);
+        Intent PlayPauseIntent = new Intent(this, PlayMusicService.class);
+        PlayPauseIntent.putExtra(Constant.BEHAVIOR, Constant.BEHAVIOR_PLAY_PAUSE);
+        PendingIntent playPausePendingIntent = PendingIntent.getService(this, 10000, PlayPauseIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        remoteViews.setOnClickPendingIntent(R.id.ib_play_pause, playPausePendingIntent);
+
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        notificationIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_HISTORY | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 10010, notificationIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        builder = new NotificationCompat.Builder(this)
+                .setContentIntent(contentIntent)
+                .setContent(remoteViews)
+                .setAutoCancel(false)
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setTicker(getResources().getText(R.string.listen_is_running));
     }
 
     @Override
     public int onStartCommand(final Intent intent, int flags, int startId) {
+        audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
         ListenApplication.fixedThreadPool.execute(new Runnable() {
             @Override
             public void run() {
-                int behavior = intent.getExtras().getInt(Constant.BEHAVIOR);
-
+                int behavior = intent.getExtras()!=null?intent.getExtras().getInt(Constant.BEHAVIOR):0;
                 switch (behavior) {
                     case Constant.BEHAVIOR_PLAY_NET:
                         bean = intent.getParcelableExtra(Constant.SONG_BEAN);
@@ -109,7 +124,9 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                         break;
                     case Constant.BEHAVIOR_PLAY_LOCAL:
                         currentPlayPosition = intent.getExtras().getInt(Constant.POSITION);
-                        play(playList.get(currentPlayPosition));
+                        if (playList != null && playList.size() > 0) {
+                            play(playList.get(currentPlayPosition));
+                        }
                         break;
                     case Constant.BEHAVIOR_PAUSE:
                         pause();
@@ -134,10 +151,27 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                         bean = intent.getParcelableExtra(Constant.SONG_BEAN);
                         add2PlayList(bean, false);
                         break;
+
+                    case Constant.BEHAVIOR_PLAY_PAUSE:
+                        if (playState == Constant.ON_PLAY) {
+                            setNotificationPlayState(Constant.ON_STOP);
+                            pause();
+                        } else if (playState == Constant.ON_PAUSE) {
+                            setNotificationPlayState(Constant.ON_PLAY);
+                            continuePlay();
+                        } else if (playState == Constant.ON_STOP) {
+                            if (playList != null && playList.size() > 0) {
+                                setNotificationPlayState(Constant.ON_PLAY);
+                                play(playList.get(currentPlayPosition));
+                            }
+                        }
+                        break;
+                    case Constant.BEHAVIOR_PLAY_NEXT:
+                        playNext();
+                        break;
                 }
             }
         });
-
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -168,6 +202,8 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
     public void onDestroy() {
         SpHelper.putInt(this, Constant.CURRENT_PLAY_POSITON, currentPlayPosition);
         SpHelper.putInt(this, Constant.LOOP_TYPE, loopType);
+        stop();
+        mNotificationManager.cancel(notificationId);
         super.onDestroy();
     }
 
@@ -194,6 +230,15 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
 
                                 @Override
                                 public void onResponse(String response, int id) {
+                                    ListenApplication.fixedThreadPool.execute(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
+                                            setPlayState(Constant.ON_PLAY);
+                                            EventBus.getDefault().post(new PlayStateEvent(playState));
+                                            updateNotificationInfo(playList.get(currentPlayPosition));
+                                        }
+                                    });
                                     String json = response.substring(6, response.length() - 1);
                                     try {
                                         JSONObject jsonObject = new JSONObject(json);
@@ -202,14 +247,13 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                                             player.setDataSource(songUrl);
                                             player.prepare();
                                             player.start();
-                                            setPlayState(Constant.ON_PLAY);
-                                            EventBus.getDefault().post(new PlayStateEvent(playState));
-                                            EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
 //                                            remoteViews.setImageViewUri(R.id.iv_icon, Uri.parse(bean.getSongImgUrl()));
 //                                            remoteViews.setTextViewText(R.id.tv_title,bean.getSongTitle());
 //                                            remoteViews.setTextViewText(R.id.tv_artist,bean.getSongArtist());
                                         } catch (IOException e) {
                                             e.printStackTrace();
+                                            setPlayState(Constant.ON_STOP);
+                                            EventBus.getDefault().post(new PlayStateEvent(playState));
                                         }
                                         ListenApplication.fixedThreadPool.execute(new Runnable() {
                                             @Override
@@ -224,23 +268,68 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                                 }
                             });
                 } else {
+                    ListenApplication.fixedThreadPool.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
+                            setPlayState(Constant.ON_PLAY);
+                            EventBus.getDefault().post(new PlayStateEvent(playState));
+                            updateNotificationInfo(playList.get(currentPlayPosition));
+                        }
+                    });
                     player.setDataSource(bean.getSongUrl());
                     player.prepare();
                     player.start();
-                    setPlayState(Constant.ON_PLAY);
-                    EventBus.getDefault().post(new PlayStateEvent(playState));
-                    EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+                setPlayState(Constant.ON_STOP);
+                EventBus.getDefault().post(new PlayStateEvent(playState));
+                setNotificationPlayState(Constant.ON_STOP);
             }
         }
+    }
+
+    private void updateNotificationInfo(final BaseSongBean baseSongBean) {
+        OkHttpUtils
+                .get()
+                .url(baseSongBean.getSongImgUrl())
+                .build()
+                .execute(new BitmapCallback() {
+                    @Override
+                    public void onError(Call call, Exception e, int id) {
+                        TUtils.showShort(R.string.net_error);
+                    }
+
+                    @Override
+                    public void onResponse(Bitmap response, int id) {
+                        remoteViews.setImageViewBitmap(R.id.iv_album_art, response);
+                        remoteViews.setTextViewText(R.id.tv_title, baseSongBean.getSongTitle());
+                        remoteViews.setTextViewText(R.id.tv_artist, baseSongBean.getSongArtist());
+                        notification = builder.build();
+                        notification.flags |= Notification.FLAG_NO_CLEAR;
+                        startForeground(notificationId,notification);
+                    }
+                });
+    }
+
+    public void setNotificationPlayState(int playState) {
+        if (playState == Constant.ON_PLAY) {
+            remoteViews.setImageViewResource(R.id.ib_play_pause, R.drawable.ic_pause_black_36dp);
+        } else {
+            remoteViews.setImageViewResource(R.id.ib_play_pause, R.drawable.ic_play_arrow_black_36dp);
+        }
+        notification = builder.build();
+        notification.flags |= Notification.FLAG_NO_CLEAR;
+        startForeground(notificationId,notification);
     }
 
     public void pause() {
         if (player != null && player.isPlaying()) {
             player.pause();
             setPlayState(Constant.ON_PAUSE);
+            EventBus.getDefault().post(new PlayStateEvent(playState));
+            setNotificationPlayState(playState);
         }
         audioManager.abandonAudioFocus(this);
     }
@@ -249,6 +338,8 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
         if (player != null && !player.isPlaying()) {
             player.start();
             setPlayState(Constant.ON_PLAY);
+            EventBus.getDefault().post(new PlayStateEvent(playState));
+            setNotificationPlayState(playState);
         }
     }
 
@@ -257,6 +348,8 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
             player.stop();
             player.release();
             setPlayState(Constant.ON_STOP);
+            EventBus.getDefault().post(new PlayStateEvent(playState));
+            setNotificationPlayState(playState);
         }
         audioManager.abandonAudioFocus(this);
     }
@@ -295,7 +388,6 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                 break;
         }
         play(playList.get(currentPlayPosition));
-        EventBus.getDefault().post(new UpdateControllerInfoEvent(playList.get(currentPlayPosition)));
     }
 
     @Override
@@ -320,8 +412,7 @@ public class PlayMusicService extends Service implements MediaPlayer.OnCompletio
                 pause();
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK://你暂时失去了音频焦点，但你可以小声地继续播放音频（低音量）而不是完全扼杀音频。
-                if (player != null && player.isPlaying())
-                    player.setVolume(0.1f, 0.1f);
+
                 break;
         }
     }

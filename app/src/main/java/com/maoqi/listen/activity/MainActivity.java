@@ -17,6 +17,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -192,8 +193,10 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
                 return false;
             }
         });
+
         Intent intent = new Intent(this, PlayMusicService.class);
         bindService(intent, connection, BIND_AUTO_CREATE);
+        startService(intent);
     }
 
     @Override
@@ -361,6 +364,17 @@ public class MainActivity extends BaseToolbarActivity implements View.OnClickLis
         Glide.with(this).load(imgUrl).into(ivAlbumArt);
         tvTitle.setText(songName);
         tvArtist.setText(artist);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case android.R.id.home:
+                stopService(new Intent(this,PlayMusicService.class));
+                finish();
+                break;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override

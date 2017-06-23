@@ -12,7 +12,7 @@
     <dimen name="margin_small">5dp</dimen>
 
 
-    <dimen name="divider_line">1dp</dimen>
+    <dimen name="divider_line">0.5dp</dimen>
     <dimen name="fab_margin">16dp</dimen>
     <dimen name="content_top_size">150dp</dimen>
     <dimen name="margin_big">20dp</dimen>

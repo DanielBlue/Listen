@@ -16,6 +16,8 @@ public class Constant {
     public static final int BEHAVIOR_PLAY_LOCAL = 104;
     public static final int BEHAVIOR_DELETE = 105;
     public static final int BEHAVIOR_ADD = 106;
+    public static final int BEHAVIOR_PLAY_PAUSE = 107;
+    public static final int BEHAVIOR_PLAY_NEXT = 108;
 
     public static final int ON_PLAY = 10086;
     public static final int ON_PAUSE = 10010;
@@ -41,7 +43,6 @@ public class Constant {
     public static final int LIST_LOOP = 100;
     public static final int SINGLE_LOOP = 101;
     public static final int RANDOM_PLAY = 102;
-
 
 
     public static final String CURRENT_PLAY_POSITON = "current_play_positon";
